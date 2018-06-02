@@ -1,0 +1,67 @@
+MET_PLF := $(MTK_PLATFORM)/platform
+
+MTK_PLATFORM := $(subst ",,$(CONFIG_MTK_PLATFORM))
+ccflags-y += -DCONFIG_MET_MODULE
+ccflags-y += -I$(MET_COMMON_DIR)/
+
+ccflags-y += -I$(srctree)/include/
+ccflags-y += -I$(srctree)/../vendor/mediatek/kernel_modules/met_drv/4.9/$(MTK_PLATFORM)/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
+
+# for mtk_gpufreq.h
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/$(MTK_PLATFORM)/
+
+# for mtk_vcorefs_manager.h
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/
+
+# for mtk_vcorefs_governor.h
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/vcorefs_v3/
+
+# for mtk_cpufreq_config.h
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/$(MTK_PLATFORM)/
+
+# for sspm_ipi.h
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm
+
+# for helio-dvfsrc.h
+ccflags-y += -I$(srctree)/drivers/devfreq
+
+ifeq ($(CONFIG_MTK_TINYSYS_SSPM_SUPPORT),y)
+subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm -I$(srctree)/drivers/misc/mediatek/sspm/$(CONFIG_MTK_PLATFORM)
+endif #ifeq ($(CONFIG_MTK_TINYSYS_SSPM_SUPPORT),y)
+
+met-y += $(MET_PLF)/core_plf_init.o $(MET_PLF)/core_plf_trace.o $(MET_PLF)/sspm/ondiemet_sspm.o
+
+################################################################################
+# MET external interface
+################################################################################
+MET_GPU=y
+MET_VCOREDVFS=y
+MET_EMI=y
+MET_PTPOD=y
+
+##############################################################################################
+# MET internal module
+##############################################################################################
+# auto define EXTRA_CFLAGS+=-DMET_XXX by MET_XXX=y
+ccflags-y+=$(foreach v, $(filter MET_%,$(.VARIABLES)), $(if $(filter $($(v)),y),-D$(v)))
+
+met-$(MET_GPU) += $(MET_PLF)/mtk_gpu_metmonitor.o
+met-$(MET_VCOREDVFS) += $(MET_PLF)/met_vcoredvfs.o
+met-$(MET_EMI) += $(MET_PLF)/met_emi.o $(MET_PLF)/mtk_emi_bm.o
+met-$(MET_PTPOD) += $(MET_PLF)/met_ptpod.o
+
+################################################################################
+# Others
+################################################################################
+ccflags-y += $(EXTRA_ARGS) $(EXTRA_CFLAGS)
+
+################################################################################
+# On-die-met SSPM only module
+################################################################################
+ifeq ($(CONFIG_MTK_TINYSYS_SSPM_SUPPORT),y)
+met-y += $(MET_PLF)/sspm/sspm_ipi_handle.o
+endif #ifeq ($(CONFIG_MTK_TINYSYS_SSPM_SUPPORT),y)
+
