@@ -99,6 +99,7 @@ enum BM_EMI_IPI_Type {
 	SET_BASE_EMI = 0x0,
 	SET_EBM_CONFIGS1 = 0x7,
 	SET_EBM_CONFIGS2 = 0x8,
+	SET_REGISTER_CB = 0x9,
 };
 #endif
 

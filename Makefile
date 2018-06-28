@@ -7,6 +7,12 @@ ifeq ($(CONFIG_FTRACE),y)
 endif
 
 PLATFORM := $(subst ",,$(CONFIG_MTK_PLATFORM))
+ifeq ($(PLATFORM), mt6761)
+PLATFORM := 6765
+else ifeq ($(PLATFORM), mt6762)
+PLATFORM := 6765
+endif
+
 MET_DIR := $(wildcard $(src)/$(PLATFORM))
 MET_COMMON_USE := $(shell test -d $(src)/common && echo yes)
 

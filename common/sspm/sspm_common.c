@@ -15,11 +15,11 @@ struct sspm_met_evnet_header {
 
 
 enum {
-        #ifdef MET_SSPM_RTS_EVNET
-        #undef MET_SSPM_RTS_EVNET
-        #endif
-        #define MET_SSPM_RTS_EVNET(rts_event_id, key_list) rts_event_id,
-        #include "met_sspm_rts_event.h"
+	#ifdef MET_SSPM_RTS_EVNET
+	#undef MET_SSPM_RTS_EVNET
+	#endif
+	#define MET_SSPM_RTS_EVNET(rts_event_id, key_list) rts_event_id,
+	#include "met_sspm_rts_event.h"
 
 	/**********************/
 	CUR_MET_RTS_EVENT_NUM,
@@ -28,11 +28,11 @@ enum {
 
 
 struct sspm_met_evnet_header met_evnet_header[MAX_MET_RTS_EVENT_NUM] = {
-        #ifdef MET_SSPM_RTS_EVNET
-        #undef MET_SSPM_RTS_EVNET
-        #endif
-        #define MET_SSPM_RTS_EVNET(rts_event_id, key_list) {rts_event_id, #rts_event_id, #rts_event_id, key_list},
-        #include "met_sspm_rts_event.h"
+	#ifdef MET_SSPM_RTS_EVNET
+	#undef MET_SSPM_RTS_EVNET
+	#endif
+	#define MET_SSPM_RTS_EVNET(rts_event_id, key_list) {rts_event_id, #rts_event_id, #rts_event_id, key_list},
+	#include "met_sspm_rts_event.h"
 };
 
 

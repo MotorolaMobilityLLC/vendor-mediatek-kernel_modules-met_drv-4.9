@@ -1,5 +1,12 @@
 $(info ======== Build met.ko ... ========)
 MET_DIR := $(wildcard $(src)/$(subst ",,$(CONFIG_MTK_PLATFORM)))
+
+ifeq ($(MET_DIR), mt6761)
+MET_DIR := 6765
+else ifeq ($(MET_DIR), mt6762)
+MET_DIR := 6765
+endif
+
 ifneq ($(MET_DIR),)
     MET_PLF_USE := $(shell test -f $(MET_DIR)/Kbuild && echo yes)
     ifeq ($(MET_PLF_USE),yes)
@@ -18,6 +25,11 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
 ccflags-y += -I$(srctree)/../vendor/mediatek/kernel_modules/met_drv/4.9/common/
 ccflags-y += -I$(srctree)/../vendor/mediatek/kernel_modules/met_drv/4.9/$(MTK_PLATFORM)/
+ifeq ($(MTK_PLATFORM), mt6761)
+ccflags-y += -I$(srctree)/../vendor/mediatek/kernel_modules/met_drv/4.9/mt6765/
+else ifeq ($(MTK_PLATFORM), mt6762)
+ccflags-y += -I$(srctree)/../vendor/mediatek/kernel_modules/met_drv/4.9/mt6765/
+endif
 ccflags-y += $(EXTRA_ARGS) $(EXTRA_CFLAGS)
 
 met-y := $(MET_CORE)/met_main.o \
