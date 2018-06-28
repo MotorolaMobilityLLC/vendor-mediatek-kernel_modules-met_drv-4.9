@@ -11,44 +11,11 @@
  * GNU General Public License for more details.
  */
 
-
-/* include <asm/system.h> */
-#include <linux/smp.h>
 #include "cpu_pmu.h"
-#include "v6_pmu_name.h"
 
-enum ARM_TYPE {
-	ARM1136 = 0xB36,
-	ARM1156 = 0xB56,
-	ARM1176 = 0xB76,
-	CHIP_UNKNOWN = 0xFFF
-};
-
-struct chip_pmu {
-	enum ARM_TYPE type;
-	struct pmu_desc *desc;
-	unsigned int count;
-	const char *cpu_name;
-};
-
-static struct chip_pmu chips[] = {
-	{ARM1136, arm11_pmu_desc, ARM11_PMU_DESC_COUNT, "arm1136"},
-	{ARM1156, arm11_pmu_desc, ARM11_PMU_DESC_COUNT, "arm1156"},
-	{ARM1176, arm11_pmu_desc, ARM11_PMU_DESC_COUNT, "arm1176"},
-};
-static struct chip_pmu chip_unknown = { CHIP_UNKNOWN, NULL, 0, "Unknown CPU" };
-
-#define CHIP_PMU_COUNT (sizeof(chips) / sizeof(struct chip_pmu))
-
-static struct chip_pmu *chip;
-
-/* define V6_PMU_HW_DEBUG */
-#ifdef V6_PMU_HW_DEBUG
-#define v6pmu_hw_debug(fmt, arg...)     pr_debug(fmt, ##arg)
-#else
-#define v6pmu_hw_debug(fmt, arg...)     do {} while (0)
-#endif
-
+/*******************************
+ *      ARM v6 operations      *
+ *******************************/
 #define ARMV6_PMCR_ENABLE               (1 << 0)
 #define ARMV6_PMCR_CTR01_RESET          (1 << 1)
 #define ARMV6_PMCR_CCOUNT_RESET         (1 << 2)
@@ -93,12 +60,10 @@ static inline unsigned int armv6_pmu_read_count(unsigned int idx)
 
 	if (idx == ARMV6_CYCLE_COUNTER)
 		asm volatile ("mrc   p15, 0, %0, c15, c12, 1":"=r" (value));
-	else
-if (idx == ARMV6_COUNTER0)
-	asm volatile ("mrc   p15, 0, %0, c15, c12, 2":"=r" (value));
-	else
-if (idx == ARMV6_COUNTER1)
-	asm volatile ("mrc   p15, 0, %0, c15, c12, 3":"=r" (value));
+	else if (idx == ARMV6_COUNTER0)
+		asm volatile ("mrc   p15, 0, %0, c15, c12, 2":"=r" (value));
+	else if (idx == ARMV6_COUNTER1)
+		asm volatile ("mrc   p15, 0, %0, c15, c12, 3":"=r" (value));
 
 	return value;
 }
@@ -169,23 +134,25 @@ static void armv6pmu_enable_event(int idx, unsigned short config)
 	armv6_pmcr_write(val);
 }
 
-static int armv6_pmu_hw_get_event_desc(int i, int event, char *event_desc)
-{
-	if (event_desc == NULL)
-		return -1;
+/***********************************
+ *      MET ARM v6 operations      *
+ ***********************************/
+enum ARM_TYPE {
+	ARM1136 = 0xB36,
+	ARM1156 = 0xB56,
+	ARM1176 = 0xB76,
+	CHIP_UNKNOWN = 0xFFF
+};
 
-	for (i = 0; i < chip->count; i++) {
-		if (chip->desc[i].event == event) {
-			strncpy(event_desc, chip->desc[i].name, MXSIZE_PMU_DESC - 1);
-			break;
-		}
-	}
+struct chip_pmu {
+	enum ARM_TYPE type;
+};
 
-	if (i == chip->count)
-		return -1;
-
-	return 0;
-}
+static struct chip_pmu chips[] = {
+	{ARM1136},
+	{ARM1156},
+	{ARM1176},
+};
 
 static int armv6_pmu_hw_check_event(struct met_pmu *pmu, int idx, int event)
 {
@@ -200,14 +167,6 @@ static int armv6_pmu_hw_check_event(struct met_pmu *pmu, int idx, int event)
 		/* pr_debug("++++++ found duplicate event 0x%02x i=%d\n", event, i); */
 		return -1;
 	}
-
-	for (i = 0; i < chip->count; i++) {
-		if (chip->desc[i].event == event)
-			break;
-	}
-
-	if (i == chip->count)
-		return -1;
 
 	return 0;
 }
@@ -260,7 +219,6 @@ static unsigned int armv6_pmu_hw_polling(struct met_pmu *pmu, int count, unsigne
 
 struct cpu_pmu_hw armv6_pmu = {
 	.name = "armv6_pmu",
-	.get_event_desc = armv6_pmu_hw_get_event_desc,
 	.check_event = armv6_pmu_hw_check_event,
 	.start = armv6_pmu_hw_start,
 	.stop = armv6_pmu_hw_stop,
@@ -271,22 +229,14 @@ struct cpu_pmu_hw *v6_cpu_pmu_hw_init(int typeid)
 {
 	int i;
 
-	for (i = 0; i < CHIP_PMU_COUNT; i++) {
-		if (chips[i].type == typeid) {
-			chip = &(chips[i]);
-
+	for (i = 0; i < ARRAY_SIZE(chips); i++)
+		if (chips[i].type == typeid)
 			break;
-		}
-	}
 
-	if (chip == NULL) {
-		chip = &chip_unknown;
-
+	if (i == ARRAY_SIZE(chips))
 		return NULL;
-	}
 
 	armv6_pmu.nr_cnt = 3;
-	armv6_pmu.cpu_name = chip->cpu_name;
 
 	return &armv6_pmu;
 }

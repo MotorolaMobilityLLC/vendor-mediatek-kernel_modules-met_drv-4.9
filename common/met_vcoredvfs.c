@@ -51,13 +51,6 @@ char *default_src_name[DEFAULT_SRC_NUM] = {
 unsigned int opp_info[DEFAULT_INFO_NUM];
 unsigned int src_req[DEFAULT_SRC_NUM];
 
-static int met_vcorefs_get_num_opp(void)
-{
-	if (vcorefs_get_num_opp_symbol)
-		return vcorefs_get_num_opp_symbol();
-	else
-		return 0;
-}
 
 static int met_vcorefs_get_opp_info_num(void)
 {
@@ -95,8 +88,6 @@ static char **met_vcorefs_get_src_req_name(void)
 
 static unsigned int *met_vcorefs_get_opp_info(void)
 {
-	int count = 0;
-
 	if (vcorefs_get_opp_info_symbol)
 		return vcorefs_get_opp_info_symbol();
 
@@ -141,27 +132,27 @@ noinline void vcorefs(unsigned char cnt, unsigned int *value)
 {
 	char *SOB, *EOB;
 
-	MET_PRINTK_GETBUF(&SOB, &EOB);
+	MET_TRACE_GETBUF(&SOB, &EOB);
 	EOB = ms_formatH_EOL(EOB, cnt, value);
-	MET_PRINTK_PUTBUF(SOB, EOB);
+	MET_TRACE_PUTBUF(SOB, EOB);
 }
 
 noinline void vcorefs_kicker(unsigned char cnt, int *value)
 {
 	char *SOB, *EOB;
 
-	MET_PRINTK_GETBUF(&SOB, &EOB);
+	MET_TRACE_GETBUF(&SOB, &EOB);
 	EOB = ms_formatH_EOL(EOB, cnt, value);
-	MET_PRINTK_PUTBUF(SOB, EOB);
+	MET_TRACE_PUTBUF(SOB, EOB);
 }
 
 noinline void ms_vcorefs(unsigned char cnt, unsigned int *value)
 {
 	char *SOB, *EOB;
 
-	MET_PRINTK_GETBUF(&SOB, &EOB);
+	MET_TRACE_GETBUF(&SOB, &EOB);
 	EOB = ms_formatH_EOL(EOB, cnt, value);
-	MET_PRINTK_PUTBUF(SOB, EOB);
+	MET_TRACE_PUTBUF(SOB, EOB);
 }
 
 /*======================================================================*/

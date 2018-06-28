@@ -31,8 +31,8 @@
 #include "met_drv.h"
 #include "met_tag.h" /* for tracing_mark_write */
 
-#include "cpu_pmu.h" /* for using kernel perf PMU driver */
-#include "cpu_pmu_v2.h" /* for using kernel perf PMU v2 driver */
+#include "cpu_pmu.h"	/* for using kernel perf PMU driver */
+
 #include "met_kernel_symbol.h"
 
 #undef	DEBUG_CPU_NOTIFY
@@ -52,16 +52,7 @@ static unsigned int online_cpu_map;
 static int curr_polling_cpu;
 static int cpu_related_cnt;
 
-static int pmu_profiling_version = 0;
-
-static DEFINE_PER_CPU(unsigned int, perf_cpuid);
-
 static int preferred_cpu_list[] = { 0, 4, 1, 2, 3, 5, 6, 7 };
-
-int get_pmu_profiling_version()
-{
-	return pmu_profiling_version;
-}
 
 static int calc_preferred_polling_cpu(unsigned int cpu_map)
 {
@@ -341,15 +332,6 @@ static int met_pmu_cpu_notify(struct notifier_block *self, unsigned long action,
 		} else
 			met_smp_call_function_single_symbol(cpu, __met_hrtimer_start, NULL, 1);
 
-		if (met_cpu_pmu_method != 0) {
-			if (pmu_profiling_version == 1)
-				met_perf_cpupmu_online(cpu);
-#ifdef MET_SUPPORT_CPUPMU_V2
-			else if (pmu_profiling_version == 2)
-				met_perf_cpupmu_online_v2(cpu);
-#endif
-		}
-
 #ifdef CONFIG_CPU_FREQ
 		force_power_log(cpu);
 #endif
@@ -380,18 +362,6 @@ static int met_pmu_cpu_notify(struct notifier_block *self, unsigned long action,
 		}
 
 		met_smp_call_function_single_symbol(cpu, __met_hrtimer_stop, NULL, 1);
-		if (met_cpu_pmu_method != 0) {
-			if (pmu_profiling_version == 1) {
-				per_cpu(perf_cpuid, cpu) = cpu;
-				met_smp_call_function_single_symbol(cpu, met_perf_cpupmu_down, (void *)&per_cpu(perf_cpuid, cpu), 1);
-			}
-#ifdef MET_SUPPORT_CPUPMU_V2
-			else if (pmu_profiling_version == 2) {
-				per_cpu(perf_cpuid, cpu) = cpu;
-				met_smp_call_function_single_symbol(cpu, met_perf_cpupmu_down_v2, (void *)&per_cpu(perf_cpuid, cpu), 1);
-			}
-#endif
-		}
 
 		met_cpu_ptr = &per_cpu(met_cpu, cpu);
 		dw = &met_cpu_ptr->dwork;
@@ -452,43 +422,7 @@ int sampler_start(void)
 
 		if (try_module_get(c->owner) == 0)
 			continue;
-#ifdef CONFIG_MET_ARM_32BIT
-		if (strcmp(c->name, "cpu") == 0) {
-			if ((c->mode) && (c->start)) {
-				pmu_profiling_version = 1;
-				cpu_related_cnt = 1;
-				if (met_cpu_pmu_method != 0)
-					met_perf_cpupmu_start();
-				else
-					c->start();
-			}
-			continue;
-		}
-#endif
 
-#ifdef MET_SUPPORT_CPUPMU_V2
-		if (strcmp(c->name, "cpu-pmu") == 0) {
-			if ((c->mode) && (c->start)) {
-				pmu_profiling_version = 2;
-				cpu_related_cnt = 1;
-				if (met_cpu_pmu_method != 0)
-					met_perf_cpupmu_start_v2();
-				else
-					c->start();
-			}
-			continue;
-		} else if (strcmp(c->name, "cpu") == 0) {
-			if ((c->mode) && (c->start)) {
-				pmu_profiling_version = 1;
-				cpu_related_cnt = 1;
-				if (met_cpu_pmu_method != 0)
-					met_perf_cpupmu_start();
-				else
-					c->start();
-			}
-			continue;
-		}
-#endif
 		if ((c->mode) && (c->cpu_related == 1))
 			cpu_related_cnt = 1;
 
@@ -534,61 +468,23 @@ void sampler_stop(void)
 	struct metdevice *c;
 	struct delayed_work *dw;
 
-	get_online_cpus();
 
+	get_online_cpus();
 	on_each_cpu(__met_hrtimer_stop, NULL, 1);
-/* for_each_online_cpu(cpu) { */
+
+	/* for_each_online_cpu(cpu) { */
 	for_each_possible_cpu(cpu) {	/* Just for case */
 		met_cpu_ptr = &per_cpu(met_cpu, cpu);
 		dw = &met_cpu_ptr->dwork;
 		cancel_delayed_work_sync(dw);
 		/* sync_samples(cpu); */
 	}
-
 	start = 0;
 	put_online_cpus();
 
 	unregister_hotcpu_notifier(&met_pmu_cpu_notifier);
 
 	list_for_each_entry(c, &met_list, list) {
-#ifdef CONFIG_MET_ARM_32BIT
-		if (strcmp(c->name, "cpu") == 0) {
-			pmu_profiling_version = 0;
-			if ((c->mode) && (c->stop)) {
-				if (met_cpu_pmu_method != 0)
-					met_perf_cpupmu_stop();
-				else
-					c->stop();
-			}
-			module_put(c->owner);
-			continue;
-		}
-#endif
-
-#ifdef MET_SUPPORT_CPUPMU_V2
-		if (strcmp(c->name, "cpu-pmu") == 0) {
-			pmu_profiling_version = 0;
-			if ((c->mode) && (c->stop)) {
-				if (met_cpu_pmu_method != 0)
-					met_perf_cpupmu_stop_v2();
-				else
-					c->stop();
-			}
-			module_put(c->owner);
-			continue;
-		}
-		else if (strcmp(c->name, "cpu") == 0) {
-			pmu_profiling_version = 0;
-			if ((c->mode) && (c->stop)) {
-				if (met_cpu_pmu_method != 0)
-					met_perf_cpupmu_stop();
-				else
-					c->stop();
-			}
-			module_put(c->owner);
-			continue;
-		}
-#endif
 		if (c->ondiemet_mode == 0) {
 			if ((!(c->cpu_related)) && (c->mode) && (c->stop))
 				c->stop();
@@ -617,10 +513,10 @@ static noinline void tracing_mark_write(int op)
 {
 	switch (op) {
 	case MET_SUSPEND:
-		MET_PRINTK("C|0|MET_SUSPEND|1");
+		MET_TRACE("C|0|MET_SUSPEND|1");
 		break;
 	case MET_RESUME:
-		MET_PRINTK("C|0|MET_SUSPEND|0");
+		MET_TRACE("C|0|MET_SUSPEND|0");
 		break;
 	}
 }
@@ -642,7 +538,7 @@ int met_hrtimer_suspend(void)
 	}
 
 	/* get current COUNT */
-	MET_PRINTK("TS: %llu GPT: %llX", sched_clock(), arch_counter_get_cntvct());
+	MET_TRACE("TS: %llu GPT: %llX", sched_clock(), arch_counter_get_cntvct());
 	return 0;
 }
 
@@ -651,7 +547,7 @@ void met_hrtimer_resume(void)
 	struct metdevice *c;
 
 	/* get current COUNT */
-	MET_PRINTK("TS: %llu GPT: %llX", sched_clock(), arch_counter_get_cntvct());
+	MET_TRACE("TS: %llu GPT: %llX", sched_clock(), arch_counter_get_cntvct());
 
 	/* tracing_mark_write(MET_RESUME); */
 	tracing_mark_write(TYPE_MET_RESUME, 0, 0, 0, 0, 0);

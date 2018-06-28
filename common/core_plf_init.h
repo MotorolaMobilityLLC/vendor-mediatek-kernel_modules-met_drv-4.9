@@ -25,6 +25,8 @@ extern struct miscdevice met_device;
  *   GPU
  */
 #include <mtk_gpu_utility.h>
+#include <mtk_gpufreq.h>
+
 extern bool mtk_get_gpu_loading(unsigned int *pLoading);
 extern bool mtk_get_gpu_block(unsigned int *pBlock);
 extern bool mtk_get_gpu_idle(unsigned int *pIdle);
@@ -62,13 +64,14 @@ extern bool (*mtk_get_gpu_pmu_deinit_symbol)(void);
 extern bool (*mtk_get_gpu_pmu_swapnreset_stop_symbol)(void);
 
 typedef void (*gpu_power_change_notify_fp) (int power_on);
+
 extern bool mtk_register_gpu_power_change(const char *name, gpu_power_change_notify_fp callback);
 extern bool mtk_unregister_gpu_power_change(const char *name);
 extern bool (*mtk_register_gpu_power_change_symbol)(const char *name,
 					gpu_power_change_notify_fp callback);
 extern bool (*mtk_unregister_gpu_power_change_symbol)(const char *name);
 
-#include <mtk_gpufreq.h>
+
 extern unsigned int (*mt_gpufreq_get_cur_freq_symbol)(void);
 extern unsigned int (*mt_gpufreq_get_thermal_limit_freq_symbol)(void);
 
@@ -78,6 +81,7 @@ extern struct metdevice met_gpumem;
 extern struct metdevice met_gpupwr;
 extern struct metdevice met_gpu_pmu;
 #endif /* MET_GPU */
+
 
 #ifdef MET_VCOREDVFS
 /*
@@ -101,19 +105,30 @@ extern unsigned int * (*vcorefs_get_src_req_symbol)(void);
 extern struct metdevice met_vcoredvfs;
 #endif /* MET_VCOREDVFS */
 
+
 #ifdef MET_EMI
-extern void *(*mt_cen_emi_base_get_symbol)(void);
 extern void *mt_cen_emi_base_get(void);
+
+extern void *(*mt_cen_emi_base_get_symbol)(void);
+
 extern struct metdevice met_sspm_emi;
 #endif /* MET_EMI */
 
+
 #ifdef MET_PTPOD
 #include <mtk_gpufreq.h>
-extern unsigned int (*mt_gpufreq_get_cur_volt_symbol)(void);
 #include <mach/mtk_cpufreq_api.h>
-extern unsigned int (*mt_cpufreq_get_cur_volt_symbol)(unsigned int cluster_id);
 #include <mtk_cpufreq_config.h>
+
+extern unsigned int (*mt_gpufreq_get_cur_volt_symbol)(void);
+extern unsigned int (*mt_cpufreq_get_cur_volt_symbol)(unsigned int cluster_id);
+
 extern struct metdevice met_ptpod;
 #endif /* MET_PTPOD */
+
+
+#ifdef MTK_TINYSYS_SSPM_SUPPORT
+extern struct metdevice met_sspm_common;
+#endif /* MTK_TINYSYS_SSPM_SUPPORT */
 
 #endif /*__CORE_PLF_INIT_H__*/

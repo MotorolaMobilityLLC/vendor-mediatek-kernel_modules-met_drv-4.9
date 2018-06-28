@@ -46,12 +46,12 @@ noinline void ms_st(unsigned long long timestamp, unsigned char cnt, u64 *value)
 
 	switch (cnt) {
 	case 10:
-		MET_PRINTK(MS_STAT_FMT FMTLX10, (unsigned long)(timestamp), (nano_rem/1000),
+		MET_TRACE(MS_STAT_FMT FMTLX10, (unsigned long)(timestamp), (nano_rem/1000),
 			value[0], value[1], value[2], value[3], value[4],
 			value[5], value[6], value[7], value[8], value[9]);
 		break;
 	case 7:
-		MET_PRINTK(MS_STAT_FMT FMTLX7, (unsigned long)(timestamp), (nano_rem/1000),
+		MET_TRACE(MS_STAT_FMT FMTLX7, (unsigned long)(timestamp), (nano_rem/1000),
 			value[0], value[1], value[2], value[3], value[4],
 			value[5], value[6]);
 		break;

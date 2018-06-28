@@ -37,7 +37,7 @@
 #define PROCESS_ARGU            0x01
 #define PROCESS_ATTR            0x02
 #define MODULE_ID_MASK          0x3fe00 /* bit 9 - 17 */
-#define ARGUMENT_MASK           0x01ff  /* bit 0 - 9 */
+#define ARGUMENT_MASK           0x01ff  /* bit 0 - 8 */
 
 /* the following command is used for AP to MD32 */
 #define MET_OP            (1 << FUNC_BIT_SHIFT)
@@ -82,6 +82,8 @@ enum {
 	MID_PTPOD,
 	MID_SPM,
 	MID_PROFILE,
+
+	MID_COMMON = 0x1F
 };
 
 #define ID_PMQOS       (1 << MID_PMQOS)
@@ -95,6 +97,8 @@ enum {
 #define ID_PTPOD       (1 << MID_PTPOD)
 #define ID_SPM         (1 << MID_SPM)
 #define ID_PROFILE     (1 << MID_PROFILE)
+#define ID_COMMON      (1 << MID_COMMON)
+
 
 extern void ondiemet_extract(void);
 extern void ondiemet_stop(void);

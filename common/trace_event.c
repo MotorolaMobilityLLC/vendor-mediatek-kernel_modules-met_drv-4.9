@@ -39,7 +39,7 @@ static int event_gpu_enabled;
 noinline void gpu_sched_switch(const char *gpu_name, u64 timestamp,
 				      u32 next_ctx_id, s32 next_prio, u32 next_job_id)
 {
-	MET_PRINTK("gpu_name=%s ts=%llu.%06lu next_ctx_id=%lu next_prio=%ld next_job_id=%lu\n",
+	MET_TRACE("gpu_name=%s ts=%llu.%06lu next_ctx_id=%lu next_prio=%ld next_job_id=%lu\n",
 		   gpu_name,
 		   (unsigned long long)show_secs_from_ns(timestamp),
 		   (unsigned long)show_usecs_from_ns(timestamp),
@@ -54,7 +54,7 @@ MET_DEFINE_PROBE(gpu_sched_switch, TP_PROTO(const char *gpu_name, u64 timestamp,
 
 noinline void gpu_job_enqueue(u32 ctx_id, u32 job_id, const char *type)
 {
-	MET_PRINTK("ctx_id=%lu job_id=%lu type=%s",
+	MET_TRACE("ctx_id=%lu job_id=%lu type=%s",
 		   (unsigned long)ctx_id, (unsigned long)job_id, type);
 }
 

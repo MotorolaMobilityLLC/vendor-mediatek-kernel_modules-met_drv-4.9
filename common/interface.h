@@ -17,7 +17,7 @@
 #include <linux/fs.h>
 
 #ifdef MET_USER_EVENT_SUPPORT
-extern int tag_reg(struct file_operations *fops, struct kobject *kobj);
+extern int tag_reg(struct file_operations *const fops, struct kobject *kobj);
 extern int tag_unreg(void);
 #include "met_drv.h"
 #include "met_tag.h"
@@ -26,7 +26,6 @@ extern struct bltable_t bltab;
 
 extern struct metdevice met_stat;
 extern struct metdevice met_cpupmu;
-extern struct metdevice met_cpupmu_v2;
 extern struct metdevice met_cookie;
 extern struct metdevice met_memstat;
 extern struct metdevice met_switch;

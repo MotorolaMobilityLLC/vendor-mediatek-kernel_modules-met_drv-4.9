@@ -11,4 +11,4 @@
  * GNU General Public License for more details.
  */
 
-#define MET_BACKEND_VERSION "6.0.2"
+#define MET_BACKEND_VERSION "6.1.0"

@@ -30,7 +30,6 @@
 #include "met_drv.h"
 #include "met_kernel_symbol.h"
 #include "interface.h"
-#include <linux/printk.h>
 #include <linux/of.h>
 
 
@@ -50,6 +49,12 @@ static struct cpu_type_name met_known_cpu_type[] = {
 	(sizeof(met_known_cpu_type)/sizeof(struct cpu_type_name))
 
 static char met_cpu_topology[64];
+
+#if	defined(CONFIG_MET_ARM_32BIT)
+void (*met_get_cpuinfo_symbol)(int cpu, struct cpuinfo_arm **cpuinfo);
+#else
+void (*met_get_cpuinfo_symbol)(int cpu, struct cpuinfo_arm64 **cpuinfo);
+#endif
 
 void (*tracing_record_cmdline_symbol)(struct task_struct *tsk);
 void (*met_cpu_frequency_symbol)(unsigned int frequency, unsigned int cpu_id);
@@ -157,6 +162,11 @@ static int met_kernel_symbol_get(void)
 {
 	int ret = 0;
 
+	if (met_get_cpuinfo_symbol == NULL)
+		met_get_cpuinfo_symbol = (void *)symbol_get(met_get_cpuinfo);
+	if (met_get_cpuinfo_symbol == NULL)
+		return -2;
+
 	if (tracing_record_cmdline_symbol == NULL)
 		tracing_record_cmdline_symbol = (void *)symbol_get(met_tracing_record_cmdline);
 	if (tracing_record_cmdline_symbol == NULL)
@@ -215,8 +225,10 @@ static int __init met_drv_init(void)
 	}
 
 	ret = met_kernel_symbol_get();
-	if (ret)
+	if (ret) {
+		pr_notice("[MET] met_kernel_symbol_get fail, ret = %d\n", ret);
 		return ret;
+	}
 	fs_reg();
 
 	if (of_root){
@@ -233,13 +245,13 @@ static int __init met_drv_init(void)
 	}
 	if (platform_name) {
 		char buf[7];
-		
+
 		memset(buf, 0x0, 7);
 		buf[0] = 'm';
 		buf[1] = 't';
 		strncpy(&buf[2], &platform_name[2], 4);
 		met_set_platform(buf, 1);
-		PR_BOOTMSG("buf=%s\n", buf);		
+		PR_BOOTMSG("buf=%s\n", buf);
 	}
 
 	cpu_topology_len = met_create_cpu_topology();
@@ -262,6 +274,8 @@ static void __exit met_drv_exit(void)
 		symbol_put(met_unreg_switch);
 	if (tracing_record_cmdline_symbol)
 		symbol_put(met_tracing_record_cmdline);
+	if (met_get_cpuinfo_symbol)
+		symbol_put(met_get_cpuinfo);
 
 #ifdef MET_PLF_USE
 	core_plf_exit();

@@ -20,7 +20,6 @@
 #include "interface.h"
 #include "met_drv.h"
 #include "cpu_pmu.h"
-#include "cpu_pmu_v2.h"
 #include "switch.h"
 #include "sampler.h"
 #include "met_kernel_symbol.h"
@@ -51,11 +50,11 @@ noinline void mt_switch(struct task_struct *prev, struct task_struct *next)
 
 	cpu = smp_processor_id();
 	if (per_cpu(first_log, cpu)) {
-		MET_PRINTK("%d, %d, %d, %d\n", prev->pid, prev_state, next->pid, next_state);
+		MET_TRACE("%d, %d, %d, %d\n", prev->pid, prev_state, next->pid, next_state);
 		per_cpu(first_log, cpu) = 0;
 	}
 	if (prev_state != next_state)
-		MET_PRINTK("%d, %d, %d, %d\n", prev->pid, prev_state, next->pid, next_state);
+		MET_TRACE("%d, %d, %d, %d\n", prev->pid, prev_state, next->pid, next_state);
 }
 
 
@@ -96,14 +95,9 @@ void met_sched_switch(struct task_struct *prev, struct task_struct *next)
 	if (met_switch.mode & MT_SWITCH_64_32BIT)
 		mt_switch(prev, next);
 
-	if (met_switch.mode & MT_SWITCH_SCHEDSWITCH) {
-		if (get_pmu_profiling_version() == 1)
-			cpupmu_polling(0, smp_processor_id());
-#ifdef MET_SUPPORT_CPUPMU_V2
-		else if (get_pmu_profiling_version() == 2)
-			cpupmu_polling_v2(0, smp_processor_id());
-#endif
-	}
+	/* met_perf_cpupmu_status: 0: stop, others: polling */
+	if ((met_switch.mode & MT_SWITCH_SCHEDSWITCH) && met_perf_cpupmu_status)
+		met_perf_cpupmu_polling(0, smp_processor_id());
 }
 
 #ifdef IRQ_TRIGGER
