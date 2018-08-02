@@ -30,9 +30,10 @@ static DEFINE_PER_CPU(struct perf_event * [MXNR_PMU_EVENTS], pevent);
 static DEFINE_PER_CPU(struct perf_event_attr [MXNR_PMU_EVENTS], pevent_attr);
 static DEFINE_PER_CPU(int, perfSet);
 static DEFINE_PER_CPU(unsigned int, perf_task_init_done);
-static DEFINE_PER_CPU(unsigned int, perf_cpuid);
-static DEFINE_PER_CPU(struct delayed_work, cpu_pmu_dwork);
-static DEFINE_PER_CPU(struct delayed_work *, perf_delayed_work_setup);
+static DEFINE_PER_CPU(int, perf_cpuid);
+static DEFINE_PER_CPU(struct delayed_work, cpu_pmu_dwork_setup);
+static DEFINE_PER_CPU(struct delayed_work*, perf_delayed_work_setup);
+static DEFINE_PER_CPU(struct delayed_work, cpu_pmu_dwork_down);
 
 noinline void mp_cpu(unsigned char cnt, unsigned int *value)
 {
@@ -84,43 +85,62 @@ static void perf_cpupmu_polling(unsigned long long stamp, int cpu)
 		mp_cpu(count, pmu_value);
 }
 
-static int perf_thread_set_perf_events(unsigned int cpu)
+static struct perf_event* perf_event_create(int cpu, unsigned short event, int count)
+{
+	struct perf_event_attr	*ev_attr;
+	struct perf_event	*ev;
+
+	ev_attr = per_cpu(pevent_attr, cpu)+count;
+	memset(ev_attr, 0, sizeof(*ev_attr));
+	ev_attr->config = event;
+	ev_attr->type = PERF_TYPE_RAW;
+	ev_attr->size = sizeof(*ev_attr);
+	ev_attr->sample_period = 0;
+	ev_attr->pinned = 1;
+
+	ev = perf_event_create_kernel_counter(ev_attr, cpu, NULL, dummy_handler, NULL);
+	if (IS_ERR(ev))
+		return NULL;
+	do {
+		if (ev->state == PERF_EVENT_STATE_ACTIVE)
+			break;
+		if (ev->state == PERF_EVENT_STATE_ERROR) {
+			perf_event_enable(ev);
+			if (ev->state == PERF_EVENT_STATE_ACTIVE)
+				break;
+		}
+		perf_event_release_kernel(ev);
+		return NULL;
+	} while (0);
+
+	return ev;
+}
+
+static void perf_event_release(int cpu, struct perf_event *ev)
+{
+	if (ev->state == PERF_EVENT_STATE_ACTIVE)
+		perf_event_disable(ev);
+	perf_event_release_kernel(ev);
+}
+
+static int perf_thread_set_perf_events(int cpu)
 {
 	int			i, size;
 	struct perf_event	*ev;
-	struct perf_event_attr	*ev_attr;
 
 	size = sizeof(struct perf_event_attr);
 	if (per_cpu(perfSet, cpu) == 0) {
 		int event_count = cpu_pmu->event_count[cpu];
 		struct met_pmu *pmu = cpu_pmu->pmu[cpu];
 		for (i = 0; i < event_count; i++) {
-			per_cpu(pevent, cpu)[i] = NULL;
 			if (!pmu[i].mode)
 				continue;	/* Skip disabled counters */
+			ev = perf_event_create(cpu, pmu[i].event, i);
+			if (ev == NULL)
+				continue;
+			per_cpu(pevent, cpu)[i] = ev;
 			per_cpu(perfPrev, cpu)[i] = 0;
 			per_cpu(perfCurr, cpu)[i] = 0;
-			ev_attr = per_cpu(pevent_attr, cpu)+i;
-			memset(ev_attr, 0, size);
-			ev_attr->config = pmu[i].event;
-			ev_attr->type = PERF_TYPE_RAW;
-			ev_attr->size = size;
-			ev_attr->sample_period = 0;
-			ev_attr->pinned = 1;
-			if (pmu[i].event == 0xff) {
-				ev_attr->type = PERF_TYPE_HARDWARE;
-				ev_attr->config = PERF_COUNT_HW_CPU_CYCLES;
-			}
-
-			ev = perf_event_create_kernel_counter(ev_attr, cpu, NULL, dummy_handler, NULL);
-			if (IS_ERR(ev))
-				continue;
-			if (ev->state != PERF_EVENT_STATE_ACTIVE) {
-				perf_event_release_kernel(ev);
-				continue;
-			}
-			per_cpu(pevent, cpu)[i] = ev;
-
 			perf_event_enable(ev);
 			per_cpu(perfCntFirst, cpu)[i] = 1;
 		}	/* for all PMU counter */
@@ -142,30 +162,30 @@ static void perf_thread_setup(struct work_struct *work)
 	}
 }
 
-void met_perf_cpupmu_online(unsigned int cpu)
+static void met_perf_cpupmu_start(int cpu)
 {
 	if (met_cpupmu.mode == 0)
 		return;
 
 	per_cpu(perf_cpuid, cpu) = cpu;
 	if (per_cpu(perf_delayed_work_setup, cpu) == NULL) {
-		struct delayed_work *dwork;
-
-		dwork = &per_cpu(cpu_pmu_dwork, cpu);
-		dwork->cpu = cpu;
+		struct delayed_work *dwork = &per_cpu(cpu_pmu_dwork_setup, cpu);
 		INIT_DELAYED_WORK(dwork, perf_thread_setup);
-		schedule_delayed_work(dwork, 0);
+		dwork->cpu = cpu;
+		schedule_delayed_work_on(cpu, dwork, 0);
+		per_cpu(perf_delayed_work_setup, cpu) = dwork;
 	}
 }
 
-void met_perf_cpupmu_down(void *perf_cpuid)
+static void perf_thread_down(struct work_struct *work)
 {
+	struct delayed_work	*dwork = to_delayed_work(work);
 	int			cpu, i;
 	struct perf_event	*ev;
 	int			event_count;
 	struct met_pmu		*pmu;
 
-	cpu = *(int*)perf_cpuid;
+	cpu = dwork->cpu;
 	if (met_cpupmu.mode == 0)
 		return;
 	if (per_cpu(perfSet, cpu) == 0)
@@ -178,25 +198,24 @@ void met_perf_cpupmu_down(void *perf_cpuid)
 		if (!pmu[i].mode)
 			continue;
 		ev = per_cpu(pevent, cpu)[i];
-		if ((ev != NULL) && (ev->state == PERF_EVENT_STATE_ACTIVE)) {
-			perf_event_disable(ev);
-			perf_event_release_kernel(ev);
+		if (ev != NULL) {
+			perf_event_release(cpu, ev);
+			per_cpu(pevent, cpu)[i] = NULL;
 		}
-		per_cpu(pevent, cpu)[i] = NULL;
 	}
 	per_cpu(perf_task_init_done, cpu) = 0;
 	per_cpu(perf_delayed_work_setup, cpu) = NULL;
 }
 
-inline static void met_perf_cpupmu_start(int cpu)
+static void met_perf_cpupmu_stop(int cpu)
 {
-	met_perf_cpupmu_online(cpu);
-}
+	struct delayed_work	*dwork;
 
-inline static void met_perf_cpupmu_stop(int cpu)
-{
 	per_cpu(perf_cpuid, cpu) = cpu;
-	met_smp_call_function_single_symbol(cpu, met_perf_cpupmu_down, &per_cpu(perf_cpuid, cpu), 1);
+	dwork = &per_cpu(cpu_pmu_dwork_down, cpu);
+	INIT_DELAYED_WORK(dwork, perf_thread_down);
+	dwork->cpu = cpu;
+	schedule_delayed_work_on(cpu, dwork, 0);
 }
 
 static int cpupmu_create_subfs(struct kobject *parent)
@@ -447,6 +466,17 @@ static int cpupmu_process_argument(const char *arg, int len)
 			 */
 			if (cpu_pmu->check_event(pmu, arg_nr, event_no) < 0)
 				goto arg_out;
+
+			/*
+			 * test if this event is available when in perf_APIs mode
+			 */
+			if (met_cpu_pmu_method) {
+				struct perf_event *ev;
+				ev = perf_event_create(cpu, event_no, arg_nr);
+				if (ev == NULL)
+					goto arg_out;
+				perf_event_release(cpu, ev);
+			}
 
 			if (event_no == 0xff && met_cpu_pmu_method == 0) {
 				if (pmu[nr_counters-1].mode == MODE_POLLING)

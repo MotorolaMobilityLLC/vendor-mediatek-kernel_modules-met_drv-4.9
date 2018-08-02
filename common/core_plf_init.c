@@ -58,6 +58,7 @@ bool (*mtk_unregister_gpu_power_change_symbol)(const char *name);
  */
 #include <helio-dvfsrc.h>
 
+int (*vcorefs_get_num_opp_symbol)(void);
 int  (*vcorefs_get_opp_info_num_symbol)(void);
 char ** (*vcorefs_get_opp_info_name_symbol)(void);
 unsigned int * (*vcorefs_get_opp_info_symbol)(void);
@@ -115,6 +116,7 @@ static int met_symbol_get(void)
 #endif /* MET_GPU */
 
 #ifdef MET_VCOREDVFS
+	_MET_SYMBOL_GET(vcorefs_get_num_opp);
 	_MET_SYMBOL_GET(vcorefs_get_opp_info_num);
 	_MET_SYMBOL_GET(vcorefs_get_opp_info_name);
 	_MET_SYMBOL_GET(vcorefs_get_opp_info);
@@ -172,6 +174,7 @@ static int met_symbol_put(void)
 #endif /* MET_GPU */
 
 #ifdef MET_VCOREDVFS
+	_MET_SYMBOL_PUT(vcorefs_get_num_opp);
 	_MET_SYMBOL_PUT(vcorefs_get_opp_info_num);
 	_MET_SYMBOL_PUT(vcorefs_get_opp_info_name);
 	_MET_SYMBOL_PUT(vcorefs_get_opp_info);

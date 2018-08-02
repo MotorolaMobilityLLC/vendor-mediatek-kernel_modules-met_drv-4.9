@@ -51,6 +51,13 @@ char *default_src_name[DEFAULT_SRC_NUM] = {
 unsigned int opp_info[DEFAULT_INFO_NUM];
 unsigned int src_req[DEFAULT_SRC_NUM];
 
+static int met_vcorefs_get_num_opp(void)
+{
+	if (vcorefs_get_num_opp_symbol)
+		return vcorefs_get_num_opp_symbol();
+	else
+		return 0;
+}
 
 static int met_vcorefs_get_opp_info_num(void)
 {
@@ -265,6 +272,8 @@ static int vcoredvfs_print_header(char *buf, int len)
 	int idx = 0;
 	int num = 0;
 	char **header;
+
+	ret = snprintf(buf, PAGE_SIZE, "met-info [000] 0.0: met_vcorefs_cfg: NUM_OPP:%d\n", met_vcorefs_get_num_opp());
 
 	/* opp information */
 	num = met_vcorefs_get_opp_info_num();
