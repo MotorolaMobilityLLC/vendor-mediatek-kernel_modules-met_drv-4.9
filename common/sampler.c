@@ -429,12 +429,17 @@ int sampler_start(void)
 		if (c->ondiemet_mode == 0) {
 			if ((!(c->cpu_related)) && (c->mode) && (c->start))
 				c->start();
+			else if ((c->cpu_related) && (c->mode) && (c->uniq_start))
+				c->uniq_start();
 		} else if (c->ondiemet_mode == 1) {
 			if ((!(c->cpu_related)) && (c->mode) && (c->ondiemet_start))
 				c->ondiemet_start();
 		} else if (c->ondiemet_mode == 2) {
 			if ((!(c->cpu_related)) && (c->mode) && (c->start))
 				c->start();
+			else if ((c->cpu_related) && (c->mode) && (c->uniq_start))
+				c->uniq_start();
+
 			if ((!(c->cpu_related)) && (c->mode) && (c->ondiemet_start))
 				c->ondiemet_start();
 		}
@@ -488,12 +493,17 @@ void sampler_stop(void)
 		if (c->ondiemet_mode == 0) {
 			if ((!(c->cpu_related)) && (c->mode) && (c->stop))
 				c->stop();
+			else if ((c->cpu_related) && (c->mode) && (c->uniq_stop))
+				c->uniq_stop();
 		} else if (c->ondiemet_mode == 1) {
 			if ((!(c->cpu_related)) && (c->mode) && (c->ondiemet_stop))
 				c->ondiemet_stop();
 		} else if (c->ondiemet_mode == 2) {
 			if ((!(c->cpu_related)) && (c->mode) && (c->stop))
 				c->stop();
+			else if ((c->cpu_related) && (c->mode) && (c->uniq_stop))
+				c->uniq_stop();
+
 			if ((!(c->cpu_related)) && (c->mode) && (c->ondiemet_stop))
 				c->ondiemet_stop();
 		}

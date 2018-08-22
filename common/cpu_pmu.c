@@ -35,6 +35,107 @@ static DEFINE_PER_CPU(struct delayed_work, cpu_pmu_dwork_setup);
 static DEFINE_PER_CPU(struct delayed_work*, perf_delayed_work_setup);
 static DEFINE_PER_CPU(struct delayed_work, cpu_pmu_dwork_down);
 
+#ifdef CPUPMU_V8_2
+#include <linux/of.h>
+#include <linux/of_address.h>
+#include <mt-plat/sync_write.h>
+#include <mt-plat/mtk_io.h>
+
+static char mcucfg_desc[] = "mediatek,mcucfg";
+static void __iomem *mcucfg_base = NULL;
+#define DBG_CONTROL_CPU6	((unsigned long)mcucfg_base + 0x3000 + 0x308)  /* DBG_CONTROL */
+#define DBG_CONTROL_CPU7	((unsigned long)mcucfg_base + 0x3800 + 0x308)  /* DBG_CONTROL */
+#define ENABLE_MTK_PMU_EVENTS_OFFSET 1
+static int restore_dbg_ctrl_cpu6;
+static int restore_dbg_ctrl_cpu7;
+
+int cpu_pmu_debug_init(void)
+{
+	struct device_node  *node = NULL;
+	unsigned int value6,value7;
+
+	 /*for A75 MTK internal event*/
+	 if (mcucfg_base == NULL) {
+		node = of_find_compatible_node(NULL, NULL, mcucfg_desc);
+		if (node == NULL) {
+			MET_TRACE("[MET_PMU_DB] of_find node == NULL\n");
+			pr_debug("[MET_PMU_DB] of_find node == NULL\n");
+			goto out;
+		}
+		mcucfg_base = of_iomap(node, 0);
+		of_node_put(node);
+		if (mcucfg_base == NULL) {
+			MET_TRACE("[MET_PMU_DB] mcucfg_base == NULL\n");
+			pr_debug("[MET_PMU_DB] mcucfg_base == NULL\n");
+			goto out;
+		}
+		MET_TRACE("[MET_PMU_DB] regbase %08lx\n", DBG_CONTROL_CPU7);
+		pr_debug("[MET_PMU_DB] regbase %08lx\n", DBG_CONTROL_CPU7);
+	}
+
+	value6 = readl(IOMEM(DBG_CONTROL_CPU6));
+	if (value6 & (1 << ENABLE_MTK_PMU_EVENTS_OFFSET)) {
+		restore_dbg_ctrl_cpu6 = 1;
+	} else {
+		restore_dbg_ctrl_cpu6 = 0;
+		mt_reg_sync_writel(value6 | (1 << ENABLE_MTK_PMU_EVENTS_OFFSET), DBG_CONTROL_CPU6);
+	}
+
+	value7 = readl(IOMEM(DBG_CONTROL_CPU7));
+	if (value7 & (1 << ENABLE_MTK_PMU_EVENTS_OFFSET)) {
+		restore_dbg_ctrl_cpu7 = 1;
+	} else {
+		restore_dbg_ctrl_cpu7 = 0;
+		mt_reg_sync_writel(value7 | (1 << ENABLE_MTK_PMU_EVENTS_OFFSET), DBG_CONTROL_CPU7);
+	}
+
+	value6 = readl(IOMEM(DBG_CONTROL_CPU6));
+	value7 = readl(IOMEM(DBG_CONTROL_CPU7));
+	MET_TRACE("[MET_PMU_DB]DBG_CONTROL_CPU6 = %08x,  DBG_CONTROL_CPU7 = %08x\n", value6, value7);
+	pr_debug("[MET_PMU_DB]DBG_CONTROL_CPU6 = %08x,  DBG_CONTROL_CPU7 = %08x\n", value6, value7);
+	return 1;
+
+out:
+	if (mcucfg_base != NULL) {
+		iounmap(mcucfg_base);
+		mcucfg_base = NULL;
+	}
+	MET_TRACE("[MET_PMU_DB]DBG_CONTROL init error");
+	pr_debug("[MET_PMU_DB]DBG_CONTROL init error");
+	return 0;
+}
+
+int cpu_pmu_debug_uninit(void)
+{
+	unsigned int value6,value7;
+
+	if (restore_dbg_ctrl_cpu6 == 0) {
+		value6 = readl(IOMEM(DBG_CONTROL_CPU6));
+		mt_reg_sync_writel(value6 & (~(1 << ENABLE_MTK_PMU_EVENTS_OFFSET)), DBG_CONTROL_CPU6);
+	}
+	if (restore_dbg_ctrl_cpu7 == 0) {
+		value7 = readl(IOMEM(DBG_CONTROL_CPU7));
+		mt_reg_sync_writel(value7 & (~(1 << ENABLE_MTK_PMU_EVENTS_OFFSET)), DBG_CONTROL_CPU7);
+	}
+
+	value6 = readl(IOMEM(DBG_CONTROL_CPU6));
+	value7 = readl(IOMEM(DBG_CONTROL_CPU7));
+	MET_TRACE("[MET_PMU_DB]DBG_CONTROL_CPU6 = %08x,  DBG_CONTROL_CPU7 = %08x\n", value6, value7);
+	pr_debug("[MET_PMU_DB]DBG_CONTROL_CPU6 = %08x,  DBG_CONTROL_CPU7 = %08x\n", value6, value7);
+
+	if (mcucfg_base != NULL) {
+		iounmap(mcucfg_base);
+		mcucfg_base = NULL;
+	}
+	restore_dbg_ctrl_cpu6 = 0;
+	restore_dbg_ctrl_cpu7 = 0;
+	return 1;
+}
+#endif
+
+
+
+
 noinline void mp_cpu(unsigned char cnt, unsigned int *value)
 {
 	MET_GENERAL_PRINT(MET_TRACE, cnt, value);
@@ -259,6 +360,18 @@ static void cpupmu_start(void)
 	met_perf_cpupmu_status = 1;
 }
 
+
+static void cpupmu_unique_start(void)
+{
+#ifdef CPUPMU_V8_2
+	int ret = 0;
+	ret = cpu_pmu_debug_init();
+	if (ret == 0)
+		PR_BOOTMSG("Failed to init CPU PMU debug!!\n");
+#endif
+	return;
+}
+
 static void cpupmu_stop(void)
 {
 	int	cpu = raw_smp_processor_id();
@@ -268,6 +381,14 @@ static void cpupmu_stop(void)
 		met_perf_cpupmu_stop(cpu);
 	else
 		cpu_pmu->stop(cpu_pmu->event_count[cpu]);
+}
+
+static void cpupmu_unique_stop(void)
+{
+#ifdef CPUPMU_V8_2
+	cpu_pmu_debug_uninit();
+#endif
+	return;
 }
 
 static const char cache_line_header[] =
@@ -512,7 +633,9 @@ struct metdevice met_cpupmu = {
 	.create_subfs = cpupmu_create_subfs,
 	.delete_subfs = cpupmu_delete_subfs,
 	.start = cpupmu_start,
+	.uniq_start = cpupmu_unique_start,
 	.stop = cpupmu_stop,
+	.uniq_stop = cpupmu_unique_stop,
 	.polling_interval = 1,
 	.timed_polling = met_perf_cpupmu_polling,
 	.print_help = cpupmu_print_help,

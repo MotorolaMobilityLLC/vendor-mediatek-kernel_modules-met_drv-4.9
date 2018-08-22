@@ -52,6 +52,11 @@ met-y := $(MET_CORE)/met_main.o \
 CFLAGS_interface.o += -DMET_USER_EVENT_SUPPORT
 CFLAGS_met_tag_ex.o += -DMET_USER_EVENT_SUPPORT
 
+$(info CPUPMU_VERSION = $(CPUPMU_VERSION))
+ifeq ("$(CPUPMU_VERSION)", "V8_2")
+	ccflags-y += -DCPUPMU_V8_2
+endif
+
 ifeq ($(ARCH), mips)
 met-y += $(MET_CORE)/mips_pmu_hw.o
 endif #ifeq ($(ARCH), mips)
