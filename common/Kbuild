@@ -114,7 +114,7 @@ met-$(MET_GPU) += $(MET_CORE)/mtk_gpu_metmonitor.o
 ################################################################################
 # MET_VCOREDVFS
 ################################################################################
-MET_VCOREDVFS := n
+MET_VCOREDVFS := y
 
 # for mtk_vcorefs_manager.h
 ifneq ("$(wildcard $(MET_VCOREDVFS_INC)/mtk_vcorefs_manager.h)","")
@@ -135,8 +135,8 @@ else
 endif
 
 # for helio-dvfsrc.h
-ifneq ("$(wildcard $(srctree)/drivers/devfreq/helio-dvfsrc.h)","")
-	ccflags-y += -I$(srctree)/drivers/devfreq/
+ifneq ("$(wildcard $(HELIO_DVFSRC_INC)/helio-dvfsrc.h)","")
+	ccflags-y += -I$(HELIO_DVFSRC_INC)/
 else
 	MET_VCOREDVFS = n
         $(info ======== Missing $(srctree)/drivers/devfreq/helio-dvfsrc.h ========)
