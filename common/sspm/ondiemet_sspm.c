@@ -13,11 +13,12 @@
 #include <linux/delay.h>
 #include <linux/module.h> /* symbol_get */
 
-#include "ondiemet_sspm.h"
 #define MET_USER_EVENT_SUPPORT
 #include "met_drv.h"
 
-#ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(ONDIEMET_SUPPORT)
+#include "ondiemet_sspm.h"
+
 #if defined(CONFIG_MTK_GMO_RAM_OPTIMIZE) || defined(CONFIG_MTK_MET_MEM_ALLOC)
 #ifdef CONFIG_MET_ARM_32BIT
 #include <asm/dma-mapping.h> /* arm_coherent_dma_ops */
@@ -461,7 +462,7 @@ void sspm_flush(void)
 	if (sspm_run_mode == SSPM_RUN_NORMAL)
 		ondiemet_module[ONDIEMET_SSPM] = 0;
 }
-#else /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+#else /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT && ONDIEMET_SUPPORT */
 int sspm_buffer_size = -1;
 
 int sspm_attr_init(struct device *dev)
@@ -490,4 +491,4 @@ void sspm_flush(void)
 {
 }
 
-#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT && ONDIEMET_SUPPORT */
