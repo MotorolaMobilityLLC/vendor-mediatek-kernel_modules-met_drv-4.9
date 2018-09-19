@@ -1,4 +1,17 @@
-ifeq (y,$(CONFIG_MODULES))
+MTK_PLATFORM := $(subst ",,$(CONFIG_MTK_PLATFORM))
+# mt6761/mt6762/mt6765 co-repo
+ifeq ($(MTK_PLATFORM), mt6761)
+MTK_PLATFORM := 6765
+else ifeq ($(MTK_PLATFORM), mt6762)
+MTK_PLATFORM := 6765
+endif
+
+MET_ROOT_DIR := $(srctree)/../vendor/mediatek/kernel_modules/met_drv/4.9
+MET_COMMON_DIR := $(wildcard $(MET_ROOT_DIR)/common)
+MET_PLF_DIR := $(wildcard $(MET_ROOT_DIR)/$(MTK_PLATFORM))
+MET_BUILD_DEFAULT := n
+
+ifeq ($(CONFIG_MODULES),y)
 
 ifeq ($(CONFIG_FTRACE),y)
     ifeq ($(CONFIG_TRACING),y)
@@ -6,45 +19,24 @@ ifeq ($(CONFIG_FTRACE),y)
     endif
 endif
 
-PLATFORM := $(subst ",,$(CONFIG_MTK_PLATFORM))
-ifeq ($(PLATFORM), mt6761)
-PLATFORM := 6765
-else ifeq ($(PLATFORM), mt6762)
-PLATFORM := 6765
-endif
-
-MET_DIR := $(wildcard $(src)/$(PLATFORM))
-MET_COMMON_USE := $(shell test -d $(src)/common && echo yes)
-
-$(info ******** Start to build met_drv for $(PLATFORM) ********)
-
-
-ifeq ($(MET_COMMON_USE),yes)
-    # met common code structure, new build flow
-    MET_COMMON_DIR := $(src)/common
+$(info ******** Start to build met_drv for $(MTK_PLATFORM) ********)
+ifneq ($(MET_PLF_DIR),)
     ifeq ($(FTRACE_READY),y)
         include $(MET_COMMON_DIR)/Kbuild
-        ccflags-y += -DCONFIG_MET_MODULE
-        ccflags-y += -I$(MET_COMMON_DIR)/
     else
-        $(warning Not building met.ko due to CONFIG_FTRACE/CONFIG_TRACING is not set)
-    endif
-else ifneq ($(MET_DIR),)
-    # not met common code structure, old build flow
-    ifeq ($(FTRACE_READY),y)
-        include $(MET_DIR)/core/Kbuild
-        MET_PLF_USE := $(shell test -f $(MET_DIR)/platform/Kbuild && echo yes)
-        ifeq ($(MET_PLF_USE),yes)
-            include $(MET_DIR)/platform/Kbuild
-        endif
-    else
-        $(warning Not building met.ko due to CONFIG_FTRACE/CONFIG_TRACING is not set)
+        $(warning Not building met.ko due to CONFIG_FTRACE/CONFIG_TRACING is not set, build met default)
+        MET_BUILD_DEFAULT = y
     endif
 else
-    $(warning not support $(PLATFORM), build met default)
-    MET_DEF_DIR := $(src)
-    include $(MET_DEF_DIR)/default/Kbuild
+    $(warning not support $(MTK_PLATFORM), build met default)
+    MET_BUILD_DEFAULT = y
 endif
-else
-$(warning Not building met.ko due to CONFIG_MODULES is not set)
+else #CONFIG_MODULES = n
+    $(warning Not building met.ko due to CONFIG_MODULES is not set, build met default)
+    MET_BUILD_DEFAULT := y
+endif
+
+ifeq ($(MET_BUILD_DEFAULT),y)
+    MET_DEF_DIR := $(MET_ROOT_DIR)/default
+    include $(MET_DEF_DIR)/Kbuild
 endif
