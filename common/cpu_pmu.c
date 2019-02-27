@@ -193,8 +193,13 @@ static struct perf_event* perf_event_create(int cpu, unsigned short event, int c
 
 	ev_attr = per_cpu(pevent_attr, cpu)+count;
 	memset(ev_attr, 0, sizeof(*ev_attr));
-	ev_attr->config = event;
-	ev_attr->type = PERF_TYPE_RAW;
+	if (event == 0xff) {
+		ev_attr->config = PERF_COUNT_HW_CPU_CYCLES;
+		ev_attr->type = PERF_TYPE_HARDWARE;
+	} else {
+		ev_attr->config = event;
+		ev_attr->type = PERF_TYPE_RAW;
+	}
 	ev_attr->size = sizeof(*ev_attr);
 	ev_attr->sample_period = 0;
 	ev_attr->pinned = 1;
