@@ -29,7 +29,7 @@
 #include "mtk_emi_bm.h"
 #include "interface.h"
 
-#ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(ONDIEMET_SUPPORT)
 #include "sspm/ondiemet_sspm.h"
 #endif
 
@@ -631,11 +631,11 @@ static void met_emi_resume(void)
 }
 
 
-#ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(ONDIEMET_SUPPORT)
 static const char help[] = "  --emi                                 monitor EMI banwidth\n";
 
 #define TTYPE_NAME_STR_LEN  64
-static char ttype_name[21][TTYPE_NAME_STR_LEN];
+/* static char ttype_name[21][TTYPE_NAME_STR_LEN]; */
 
 static int emi_print_help(char *buf, int len)
 {
@@ -645,7 +645,7 @@ static int emi_print_help(char *buf, int len)
 static int emi_print_header(char *buf, int len)
 {
 	int ret = 0;
-	int ret_m[21];
+/*	int ret_m[21]; */
 	int i = 0;
 
 #if 0
@@ -903,7 +903,7 @@ struct metdevice met_sspm_emi = {
 	.create_subfs		= met_emi_create,
 	.delete_subfs		= met_emi_delete,
 	.resume			= met_emi_resume,
-#ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(ONDIEMET_SUPPORT)
 	.ondiemet_start		= ondiemet_emi_start,
 	.ondiemet_stop		= ondiemet_emi_stop,
 	.ondiemet_print_help	= emi_print_help,

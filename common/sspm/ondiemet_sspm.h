@@ -14,7 +14,7 @@
 #ifndef __ONDIEMET_SSPM_H
 #define __ONDIEMET_SSPM_H
 
-#ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(ONDIEMET_SUPPORT)
 #include "ondiemet.h"
 #include "sspm_ipi.h"
 #include <linux/dma-mapping.h>
@@ -133,5 +133,5 @@ extern int sspm_buffer_dumping;
 
 void sspm_flush(void);
 
-#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT && ONDIEMET_SUPPORT */
 #endif /* __ONDIEMET_SSPM_H */

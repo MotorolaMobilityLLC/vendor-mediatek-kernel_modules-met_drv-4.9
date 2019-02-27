@@ -22,7 +22,7 @@
 #include "mtk_emi_bm.h"
 #include "met_drv.h"
 #include "interface.h"
-#ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(ONDIEMET_SUPPORT)
 #include "sspm/ondiemet_sspm.h"
 #endif
 

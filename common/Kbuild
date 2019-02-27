@@ -202,19 +202,24 @@ met-$(MET_PTPOD) += $(MET_CORE)/met_ptpod.o
 ################################################################################
 # On-die-met SSPM only module
 ################################################################################
-ifeq ($(CONFIG_MTK_TINYSYS_SSPM_SUPPORT),)
-    $(info CONFIG_MTK_TINYSYS_SSPM_SUPPORT = n)
-else
-    $(info CONFIG_MTK_TINYSYS_SSPM_SUPPORT = $(CONFIG_MTK_TINYSYS_SSPM_SUPPORT))
-endif
+$(info FEATURE_ONDIEMET = $(FEATURE_ONDIEMET))
+ifeq ($(FEATURE_ONDIEMET), on)
+    subdir-ccflags-y += -DONDIEMET_SUPPORT
 
-ifeq ($(CONFIG_MTK_TINYSYS_SSPM_SUPPORT),y)
-    # for sspm_ipi.h
-    subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm
-    subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm/$(MTK_PLATFORM)
-    met-y += $(MET_CORE)/sspm/sspm_ipi_handle.o
-    met-y += $(MET_CORE)/sspm/sspm_common.o
-    ccflags-y += -DMTK_TINYSYS_SSPM_SUPPORT
+    ifeq ($(CONFIG_MTK_TINYSYS_SSPM_SUPPORT),)
+        $(info CONFIG_MTK_TINYSYS_SSPM_SUPPORT = n)
+    else
+        $(info CONFIG_MTK_TINYSYS_SSPM_SUPPORT = $(CONFIG_MTK_TINYSYS_SSPM_SUPPORT))
+    endif
+
+    ifeq ($(CONFIG_MTK_TINYSYS_SSPM_SUPPORT),y)
+        # for sspm_ipi.h
+        subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm
+        subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm/$(MTK_PLATFORM)
+        met-y += $(MET_CORE)/sspm/sspm_ipi_handle.o
+        met-y += $(MET_CORE)/sspm/sspm_common.o
+        ccflags-y += -DMTK_TINYSYS_SSPM_SUPPORT
+    endif
 endif
 
 ##############################################################################################
