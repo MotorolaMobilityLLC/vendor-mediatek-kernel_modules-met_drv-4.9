@@ -26,23 +26,6 @@
 /*
  *   GPU
  */
-__attribute__((weakref)) bool mtk_get_gpu_loading(unsigned int *pLoading);
-__attribute__((weakref)) bool mtk_get_gpu_block(unsigned int *pBlock);
-__attribute__((weakref)) bool mtk_get_gpu_idle(unsigned int *pIdle);
-__attribute__((weakref)) bool mtk_get_gpu_dvfs_from(MTK_GPU_DVFS_TYPE *peType, unsigned long *pulFreq);
-__attribute__((weakref)) bool mtk_get_gpu_sub_loading(unsigned int *pLoading);
-__attribute__((weakref)) bool mtk_get_3D_fences_count(int *pi32Count);
-__attribute__((weakref)) bool mtk_get_gpu_memory_usage(unsigned int *pMemUsage);
-__attribute__((weakref)) bool mtk_get_gpu_power_loading(unsigned int *pLoading);
-__attribute__((weakref)) bool mtk_get_custom_boost_gpu_freq(unsigned int *pui32FreqLevel);
-__attribute__((weakref)) bool mtk_get_custom_upbound_gpu_freq(unsigned int *pui32FreqLevel);
-__attribute__((weakref)) bool mtk_get_vsync_based_target_freq(unsigned long *pulFreq);
-__attribute__((weakref)) bool mtk_get_vsync_offset_event_status(unsigned int *pui32EventStatus);
-__attribute__((weakref)) bool mtk_get_vsync_offset_debug_status(unsigned int *pui32EventStatus);
-__attribute__((weakref)) bool mtk_enable_gpu_perf_monitor(bool enable);
-__attribute__((weakref)) bool mtk_get_gpu_pmu_init(GPU_PMU *pmus, int pmu_size, int *ret_size);
-__attribute__((weakref)) bool mtk_get_gpu_pmu_swapnreset(GPU_PMU *pmus, int pmu_size);
-
 bool (*mtk_get_gpu_loading_symbol)(unsigned int *pLoading);
 bool (*mtk_get_gpu_block_symbol)(unsigned int *pBlock);
 bool (*mtk_get_gpu_idle_symbol)(unsigned int *pIdle);
@@ -63,16 +46,8 @@ bool (*mtk_get_gpu_pmu_swapnreset_symbol)(GPU_PMU *pmus, int pmu_size);
 bool (*mtk_get_gpu_pmu_deinit_symbol)(void);
 bool (*mtk_get_gpu_pmu_swapnreset_stop_symbol)(void);
 #endif
-
-__attribute__((weakref)) unsigned int mt_gpufreq_get_cur_freq(void);
-__attribute__((weakref)) unsigned int mt_gpufreq_get_thermal_limit_freq(void);
-
 unsigned int (*mt_gpufreq_get_cur_freq_symbol)(void);
 unsigned int (*mt_gpufreq_get_thermal_limit_freq_symbol)(void);
-
-__attribute__((weakref)) bool mtk_register_gpu_power_change(const char *name, gpu_power_change_notify_fp callback);
-__attribute__((weakref)) bool mtk_unregister_gpu_power_change(const char *name);
-
 bool (*mtk_register_gpu_power_change_symbol)(const char *name, gpu_power_change_notify_fp callback);
 bool (*mtk_unregister_gpu_power_change_symbol)(const char *name);
 #endif /* MET_GPU */
@@ -92,15 +67,10 @@ unsigned int * (*vcorefs_get_src_req_symbol)(void);
 #endif /* MET_VCOREDVFS */
 
 #ifdef MET_EMI
-__attribute__((weakref)) void *mt_cen_emi_base_get(void);
-
 void *(*mt_cen_emi_base_get_symbol)(void);
 #endif /* MET_EMI */
 
 #ifdef MET_PTPOD
-__attribute__((weakref)) unsigned int mt_gpufreq_get_cur_volt(void);
-__attribute__((weakref)) unsigned int mt_cpufreq_get_cur_volt(unsigned int cluster_id);
-
 unsigned int (*mt_gpufreq_get_cur_volt_symbol)(void);
 unsigned int (*mt_cpufreq_get_cur_volt_symbol)(unsigned int cluster_id);
 #endif /* MET_PTPOD */

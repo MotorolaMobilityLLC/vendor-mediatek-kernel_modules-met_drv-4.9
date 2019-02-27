@@ -766,6 +766,21 @@ static int ondiemet_emi_print_header(char *buf, int len)
 	return emi_print_header(buf, len);
 }
 
+static void MET_BM_IPI_REGISTER_CB(void)
+{
+	int ret, i;
+	unsigned int rdata;
+	unsigned int ipi_buf[4];
+
+	for (i = 0; i < 4; i++)
+		ipi_buf[i] = 0;
+
+	if (sspm_buf_available == 1) {
+		ipi_buf[0] = MET_MAIN_ID | (MID_EMI << MID_BIT_SHIFT) | MET_ARGU | SET_REGISTER_CB;
+		ret = sspm_ipi_send_sync(IPI_ID_MET, IPI_OPT_WAIT, (void *)ipi_buf, 0, &rdata, 1);
+	}
+}
+
 static void MET_BM_IPI_configs(void)
 {
 	int ret, i;
@@ -783,6 +798,7 @@ static void MET_BM_IPI_configs(void)
 
 static void ondiemet_emi_start(void)
 {
+	MET_BM_IPI_REGISTER_CB();
 	if (!emi_inited) {
 		if (MET_BM_Init() != 0) {
 			met_sspm_emi.mode = 0;
