@@ -1,11 +1,4 @@
 MTK_PLATFORM := $(subst ",,$(CONFIG_MTK_PLATFORM))
-# mt6761/mt6762/mt6765 co-repo
-ifeq ($(MTK_PLATFORM), mt6761)
-MTK_PLATFORM := mt6765
-else ifeq ($(MTK_PLATFORM), mt6762)
-MTK_PLATFORM := mt6765
-endif
-
 MET_ROOT_DIR := $(srctree)/../vendor/mediatek/kernel_modules/met_drv/4.9
 MET_COMMON_DIR := $(wildcard $(MET_ROOT_DIR)/common)
 MET_PLF_DIR := $(wildcard $(MET_ROOT_DIR)/$(MTK_PLATFORM))
