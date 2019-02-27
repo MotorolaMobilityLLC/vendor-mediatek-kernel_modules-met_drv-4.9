@@ -20,7 +20,6 @@
 #include <linux/semaphore.h>
 #include <linux/freezer.h>
 #include <linux/uaccess.h>
-#include <linux/printk.h>
 #include <linux/completion.h>
 
 #include "ondiemet_log.h"
@@ -469,7 +468,7 @@ static ssize_t ondiemet_log_run_store(struct device *dev, struct device_attribut
 	return count;
 }
 
-static DEVICE_ATTR(ondiemet_log_run, 0220, ondiemet_log_run_show, ondiemet_log_run_store);
+static DEVICE_ATTR(ondiemet_log_run, 0660, ondiemet_log_run_show, ondiemet_log_run_store);
 
 int ondiemet_log_manager_init(struct device *dev)
 {

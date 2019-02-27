@@ -50,7 +50,7 @@ DECLARE_PER_CPU(char[MET_STRBUF_SIZE], met_strbuf);
 #define TRACE_PUTS(p) do {} while (0)
 #endif
 
-#define GET_MET_PRINTK_BUFFER_ENTER_CRITICAL() \
+#define GET_MET_TRACE_BUFFER_ENTER_CRITICAL() \
 	({ \
 		char *pmet_strbuf; \
 		preempt_disable(); \
@@ -65,14 +65,14 @@ DECLARE_PER_CPU(char[MET_STRBUF_SIZE], met_strbuf);
 		pmet_strbuf;\
 	})
 
-#define PUT_MET_PRINTK_BUFFER_EXIT_CRITICAL(pmet_strbuf) \
+#define PUT_MET_TRACE_BUFFER_EXIT_CRITICAL(pmet_strbuf) \
 	do {\
 		if (pmet_strbuf)\
 			TRACE_PUTS(pmet_strbuf); \
 		my_preempt_enable(); \
 	} while (0)
 
-#define MET_PRINTK(FORMAT, args...) \
+#define MET_TRACE(FORMAT, args...) \
 	do { \
 		char *pmet_strbuf; \
 		preempt_disable(); \
@@ -96,7 +96,7 @@ DECLARE_PER_CPU(char[MET_STRBUF_SIZE], met_strbuf);
  * SOB: start of buf
  * EOB: end of buf
  */
-#define MET_PRINTK_GETBUF(pSOB, pEOB) \
+#define MET_TRACE_GETBUF(pSOB, pEOB) \
 	({ \
 		preempt_disable(); \
 		if (in_nmi()) \
@@ -112,13 +112,13 @@ DECLARE_PER_CPU(char[MET_STRBUF_SIZE], met_strbuf);
 			*pEOB += snprintf(*pEOB, MET_STRBUF_SIZE, "%s: ", __func__); \
 	})
 
-#define MET_PRINTK_PUTBUF(SOB, EOB) \
+#define MET_TRACE_PUTBUF(SOB, EOB) \
 	({ \
 		__trace_puts(_THIS_IP_, (SOB), (uintptr_t)((EOB)-(SOB))); \
 		my_preempt_enable(); \
 	})
 
-#define MET_FTRACE_PRINTK(TRACE_NAME, args...)			\
+#define MET_FTRACE_DUMP(TRACE_NAME, args...)			\
 	do {							\
 		trace_##TRACE_NAME(args);;			\
 	} while (0)

@@ -67,16 +67,16 @@ noinline void GPU_Loading(unsigned char cnt, unsigned int *value)
 {
 	switch (cnt) {
 	case 1:
-		MET_PRINTK("%u\n", value[0]);
+		MET_TRACE("%u\n", value[0]);
 		break;
 	case 2:
-		MET_PRINTK("%u,%u\n", value[0], value[1]);
+		MET_TRACE("%u,%u\n", value[0], value[1]);
 		break;
 	case 3:
-		MET_PRINTK("%u,%u,%u\n", value[0], value[1], value[2]);
+		MET_TRACE("%u,%u,%u\n", value[0], value[1], value[2]);
 		break;
 	case 4:
-		MET_PRINTK("%u,%u,%u,%u\n", value[0], value[1], value[2], value[3]);
+		MET_TRACE("%u,%u,%u,%u\n", value[0], value[1], value[2], value[3]);
 		break;
 	default:
 		break;
@@ -86,12 +86,12 @@ noinline void GPU_Loading(unsigned char cnt, unsigned int *value)
 
 noinline void GPU_Sub_Loading(unsigned int loading)
 {
-	MET_PRINTK("%u\n", loading);
+	MET_TRACE("%u\n", loading);
 }
 
 noinline void GPU_3D_Fences_Count(int count)
 {
-	MET_PRINTK("%d\n", count);
+	MET_TRACE("%d\n", count);
 }
 
 #ifdef GPU_HAL_RUN_PREMPTIBLE
@@ -264,26 +264,26 @@ static unsigned int gpu_dvfs_type_freq[ARRAY_SIZE(gpu_dvfs_type_name)];
 noinline void GPU_DVFS(unsigned int Freq, unsigned int ThermalLimit,
 			unsigned long CustomBoost, unsigned long CustomUpbound)
 {
-	MET_PRINTK("%u,%u,%lu,%lu\n", Freq, ThermalLimit, CustomBoost, CustomUpbound);
+	MET_TRACE("%u,%u,%lu,%lu\n", Freq, ThermalLimit, CustomBoost, CustomUpbound);
 }
 
 noinline void GPU_DVFS_TYPE(void)
 {
 	char	*SOB, *EOB;
 
-	MET_PRINTK_GETBUF(&SOB, &EOB);
+	MET_TRACE_GETBUF(&SOB, &EOB);
 	EOB = ms_formatD_EOL(EOB, ARRAY_SIZE(gpu_dvfs_type_freq), gpu_dvfs_type_freq);
-	MET_PRINTK_PUTBUF(SOB, EOB);
+	MET_TRACE_PUTBUF(SOB, EOB);
 }
 
 noinline void GPU_DVFS_VSYNC(unsigned long freq)
 {
-	MET_PRINTK("%lu\n", freq);
+	MET_TRACE("%lu\n", freq);
 }
 
 noinline void GPU_VSYNC_OFFSET_STATUS(unsigned int event_status, unsigned int debug_status)
 {
-	MET_PRINTK("%u,%u\n", event_status, debug_status);
+	MET_TRACE("%u,%u\n", event_status, debug_status);
 }
 
 static void gpu_dvfs(void)
@@ -419,7 +419,7 @@ noinline void GPU_MEM(unsigned long long stamp, int cpu)
 
 	if (g_u4MemProfileIsOn == 1) {
 		mtk_get_gpu_memory_usage_symbol(&u4Value);
-		MET_PRINTK("%d\n", u4Value);
+		MET_TRACE("%d\n", u4Value);
 	}
 }
 
@@ -470,7 +470,7 @@ noinline void GPU_Power(struct work_struct *work)
 		return;
 
 	mtk_get_gpu_power_loading_symbol(&u4Value);
-	MET_PRINTK("%d\n", u4Value);
+	MET_TRACE("%d\n", u4Value);
 }
 
 static void GPU_PowerNotify(unsigned long long stamp, int cpu)
@@ -488,7 +488,7 @@ noinline void GPU_Power(unsigned long long stamp, int cpu)
 
 	if (g_u4PowerProfileIsOn == 1) {
 		mtk_get_gpu_power_loading_symbol(&u4Value);
-		MET_PRINTK("%d\n", u4Value);
+		MET_TRACE("%d\n", u4Value);
 	}
 }
 #endif
@@ -582,9 +582,9 @@ noinline void GPU_PMU_RAW(
 		for (i = 0; i < pmu_cnt; i++)
 			value[i] = 0;
 
-		MET_PRINTK_GETBUF(&SOB, &EOB);
+		MET_TRACE_GETBUF(&SOB, &EOB);
 		EOB = ms_formatH(EOB, pmu_cnt, value);
-		MET_PRINTK_PUTBUF(SOB, EOB);
+		MET_TRACE_PUTBUF(SOB, EOB);
 		return;
 	}
 
@@ -596,9 +596,9 @@ noinline void GPU_PMU_RAW(
 					pmu_list[i].value = 0xFFFFFFFF;
 				value[i] = pmu_list[i].value;
 			}
-			MET_PRINTK_GETBUF(&SOB, &EOB);
+			MET_TRACE_GETBUF(&SOB, &EOB);
 			EOB = ms_formatH(EOB, pmu_cnt, value);
-			MET_PRINTK_PUTBUF(SOB, EOB);
+			MET_TRACE_PUTBUF(SOB, EOB);
 		}
 	}
 }
@@ -645,7 +645,7 @@ static void delete_gpu_pmu_list(void)
 
 static void gpu_pwr_status_cb(int on)
 {
-	MET_PRINTK("on = %d\n", on);
+	MET_TRACE("on = %d\n", on);
 
 	if (on == 1) {
 		/*

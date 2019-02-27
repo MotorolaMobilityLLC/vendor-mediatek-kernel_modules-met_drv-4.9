@@ -144,18 +144,18 @@ int MET_BM_SetTtypeCounterRW(unsigned int bmrw0_val, unsigned int bmrw1_val)
 	unsigned int value_origin;
 
 	value_origin = emi_readl(IOMEM(ADDR_EMI + EMI_BMRW0));
-	MET_PRINTK("[MET_EMI_settype1] value_origin: %x\n", value_origin);
+	MET_TRACE("[MET_EMI_settype1] value_origin: %x\n", value_origin);
 	if (value_origin != bmrw0_val) {
 		emi_reg_sync_writel(bmrw0_val, ADDR_EMI + EMI_BMRW0);
-		MET_PRINTK("[MET_EMI_settype1] bmrw0_val: %x, value_origin: %x\n", bmrw0_val,
+		MET_TRACE("[MET_EMI_settype1] bmrw0_val: %x, value_origin: %x\n", bmrw0_val,
 			   value_origin);
 	}
 
 	value_origin = emi_readl(IOMEM(ADDR_EMI + EMI_BMRW1));
-	MET_PRINTK("[MET_EMI_settype2] value_origin: %x\n", value_origin);
+	MET_TRACE("[MET_EMI_settype2] value_origin: %x\n", value_origin);
 	if (value_origin != bmrw1_val) {
 		emi_reg_sync_writel(bmrw1_val, ADDR_EMI + EMI_BMRW1);
-		MET_PRINTK("[MET_EMI_settype2] bmrw0_val: %x, value_origin: %x\n", bmrw1_val,
+		MET_TRACE("[MET_EMI_settype2] bmrw0_val: %x, value_origin: %x\n", bmrw1_val,
 			   value_origin);
 
 	}

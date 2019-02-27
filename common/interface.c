@@ -17,7 +17,6 @@
 #include <linux/device.h>
 #include <linux/miscdevice.h>
 #include <linux/kallsyms.h>
-#include <linux/printk.h>
 #include <linux/syscore_ops.h>
 #include <linux/dma-mapping.h>
 #include "interface.h"
@@ -40,7 +39,11 @@ static int sample_rate = 1000;	/* Default: 1000 Hz */
 static int met_suspend_compensation_mode;
 static int met_suspend_compensation_flag;
 
-/* defalut method is perf driver */
+/*
+ * met_cpu_pmu_method:
+ *   0: MET pmu driver
+ *   1: perf APIs
+ */
 unsigned int met_cpu_pmu_method = 1;
 
 int met_hrtimer_expire;		/* in ns */
@@ -80,7 +83,7 @@ static void calc_timer_value(int rate)
 	else
 		met_timer_expire = (HZ / rate) + 1;
 
-	/* xprintk("JBK HZ=%d, met_hrtimer_expire=%d ns, met_timer_expire=%d ticks\n", */
+	/* pr_debug("JBK HZ=%d, met_hrtimer_expire=%d ns, met_timer_expire=%d ticks\n", */
 	/* HZ, met_hrtimer_expire, met_timer_expire); */
 }
 
@@ -178,6 +181,11 @@ static DEVICE_ATTR(suspend_compensation_enable, 0664, suspend_compensation_enabl
 
 static ssize_t suspend_compensation_flag_show(struct device *dev, struct device_attribute *attr, char *buf);
 static DEVICE_ATTR(suspend_compensation_flag, 0444, suspend_compensation_flag_show, NULL);
+
+
+static ssize_t ipi_test_store(struct device *dev, struct device_attribute *attr, const char *buf,
+			 size_t count);
+static DEVICE_ATTR(ipi_test, 0664, NULL, ipi_test_store);
 
 static const struct file_operations met_file_ops = {
 	.owner = THIS_MODULE
@@ -315,6 +323,37 @@ static ssize_t cpu_pmu_method_store(struct device *dev, struct device_attribute 
 	met_cpu_pmu_method = value;
 	return count;
 }
+
+
+static void _test_trace_ipi_raise(void *info)
+{
+	unsigned int *cpu = (unsigned int *)info;
+	void (*arch_send_call_function_single_ipi_sym)(int cpu) = NULL;
+
+	arch_send_call_function_single_ipi_sym = (void *)symbol_get(met_arch_send_call_function_single_ipi);
+	if (arch_send_call_function_single_ipi_sym)
+		arch_send_call_function_single_ipi_sym(*cpu);
+}
+
+static ssize_t ipi_test_store(struct device *dev, struct device_attribute *attr, const char *buf,
+			 size_t count)
+{
+	int this_cpu = smp_processor_id();
+	unsigned int cpu = 0;
+	unsigned int value;
+
+	if (met_parse_num(buf, &value, count) < 0)
+		return -EINVAL;
+
+	cpu = value;
+	if (cpu == this_cpu)
+		_test_trace_ipi_raise(&cpu);
+	else
+		met_smp_call_function_single_symbol(cpu, _test_trace_ipi_raise, &cpu, 1);
+
+	return count;
+}
+
 
 #if	defined(MET_BOOT_MSG)
 char met_boot_msg_tmp[256];
@@ -877,6 +916,8 @@ int met_register(struct metdevice *met)
 			return -EEXIST;
 	}
 
+	PR_BOOTMSG("met_register %s ...\n", met->name);
+
 	INIT_LIST_HEAD(&met->list);
 
 	/* Allocate timer count for per CPU */
@@ -1226,6 +1267,12 @@ int fs_reg(void)
 		return ret;
 	}
 
+	ret = device_create_file(met_device.this_device, &dev_attr_ipi_test);
+	if (ret != 0) {
+		pr_debug("can not create device file: ipi_test\n");
+		return ret;
+	}
+
 	kobj_misc = kobject_create_and_add("misc", &met_device.this_device->kobj);
 	if (kobj_misc == NULL) {
 		pr_debug("can not create kobject: kobj_misc\n");
@@ -1246,9 +1293,6 @@ int fs_reg(void)
 
 	met_register(&met_cookie);
 	met_register(&met_cpupmu);
-#ifdef MET_SUPPORT_CPUPMU_V2
-	met_register(&met_cpupmu_v2);
-#endif
 	met_register(&met_memstat);
 	met_register(&met_switch);
 	/* met_register(&met_trace_event); */
@@ -1259,7 +1303,7 @@ int fs_reg(void)
 	met_ext_api.output_met_backlight_tag = output_met_backlight_tag;
 
 #ifdef MET_USER_EVENT_SUPPORT
-	tag_reg((struct file_operations *) met_device.fops, &met_device.this_device->kobj);
+	tag_reg((struct file_operations * const) met_device.fops, &met_device.this_device->kobj);
 #endif
 
 	met_register(&met_stat);
@@ -1288,9 +1332,6 @@ void fs_unreg(void)
 	met_deregister(&met_switch);
 	met_deregister(&met_memstat);
 	met_deregister(&met_cpupmu);
-#ifdef MET_SUPPORT_CPUPMU_V2
-	met_deregister(&met_cpupmu_v2);
-#endif
 	met_deregister(&met_cookie);
 	met_deregister(&met_backlight);
 	met_ext_api.enable_met_backlight_tag = NULL;
@@ -1328,6 +1369,7 @@ void fs_unreg(void)
 	device_remove_file(met_device.this_device, &dev_attr_core_topology);
 	device_remove_file(met_device.this_device, &dev_attr_plf);
 	device_remove_file(met_device.this_device, &dev_attr_hash);
+	device_remove_file(met_device.this_device, &dev_attr_ipi_test);
 
 	ondiemet_log_manager_uninit(met_device.this_device);
 	ondiemet_attr_uninit(met_device.this_device);

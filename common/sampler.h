@@ -45,8 +45,6 @@ extern int met_hrtimer_suspend(void);
 extern void met_hrtimer_resume(void);
 extern void met_event_timer_notify(void);
 
-extern int get_pmu_profiling_version(void);
-
 #ifdef CONFIG_CPU_FREQ
 #include "power.h"
 #endif

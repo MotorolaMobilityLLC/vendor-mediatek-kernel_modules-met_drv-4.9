@@ -44,12 +44,12 @@ static int reset_driver_stat(void)
 
 noinline void cookie(char *strbuf)
 {
-	MET_PRINTK("%s\n", strbuf);
+	MET_TRACE("%s\n", strbuf);
 }
 
 noinline void cookie2(char *strbuf)
 {
-	MET_PRINTK("%s\n", strbuf);
+	MET_TRACE("%s\n", strbuf);
 }
 
 static void get_kernel_cookie(unsigned long pc, struct cookie_info *pinfo)

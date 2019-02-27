@@ -61,7 +61,7 @@ static struct delayed_work dwork;
 
 noinline void memstat(unsigned int cnt, unsigned int *value)
 {
-	MET_GENERAL_PRINT(MET_PRINTK, cnt, value);
+	MET_GENERAL_PRINT(MET_TRACE, cnt, value);
 }
 
 static int get_phy_memstat(unsigned int *value)

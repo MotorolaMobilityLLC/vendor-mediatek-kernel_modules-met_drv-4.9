@@ -15,10 +15,18 @@
 #define MET_KERNEL_SYMBOL
 
 /*lookup symbol*/
+#include <asm/cpu.h>
 #include <linux/kallsyms.h>
-#include <linux/printk.h>
 #include <linux/perf_event.h>
 #include <linux/kthread.h>
+
+#if	defined(CONFIG_MET_ARM_32BIT)
+extern void met_get_cpuinfo(int cpu, struct cpuinfo_arm **cpuinfo);
+extern void (*met_get_cpuinfo_symbol)(int cpu, struct cpuinfo_arm **cpuinfo);
+#else
+extern void met_get_cpuinfo(int cpu, struct cpuinfo_arm64 **cpuinfo);
+extern void (*met_get_cpuinfo_symbol)(int cpu, struct cpuinfo_arm64 **cpuinfo);
+#endif
 
 extern void (*tracing_record_cmdline_symbol)(struct task_struct *tsk);
 extern void met_cpu_frequency(unsigned int frequency, unsigned int cpu_id);
@@ -41,4 +49,5 @@ extern struct task_struct *met_kthread_create_on_cpu(int (*threadfn)(void *data)
 				void *data, unsigned int cpu,
 				const char *namefmt);
 extern int met_smp_call_function_single(int cpu, smp_call_func_t func, void *info, int wait);
+extern void met_arch_send_call_function_single_ipi(int cpu);
 #endif	/* MET_KERNEL_SYMBOL */

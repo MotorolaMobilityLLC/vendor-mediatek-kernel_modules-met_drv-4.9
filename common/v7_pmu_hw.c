@@ -11,58 +11,23 @@
  * GNU General Public License for more details.
  */
 
-/* include <asm/system.h> */
-#include <linux/smp.h>
 #include "cpu_pmu.h"
 #include "v6_pmu_hw.h"
-#include "v7_pmu_name.h"
-#include "v8_pmu_name.h"	/* for 32-bit build of arm64 cpu */
 
+/*******************************
+ *      ARM v7 operations      *
+ *******************************/
 #define ARMV7_PMCR_E		(1 << 0)	/* enable all counters */
 #define ARMV7_PMCR_P		(1 << 1)
 #define ARMV7_PMCR_C		(1 << 2)
 #define ARMV7_PMCR_D		(1 << 3)
 #define ARMV7_PMCR_X		(1 << 4)
 #define ARMV7_PMCR_DP		(1 << 5)
-#define ARMV7_PMCR_N_SHIFT		11	/* Number of counters supported */
-#define ARMV7_PMCR_N_MASK		0x1f
-#define ARMV7_PMCR_MASK			0x3f	/* mask for writable bits */
+#define ARMV7_PMCR_N_SHIFT	11		/* Number of counters supported */
+#define ARMV7_PMCR_N_MASK	0x1f
+#define ARMV7_PMCR_MASK		0x3f		/* mask for writable bits */
 
-
-enum ARM_TYPE {
-	CORTEX_A7 = 0xC07,
-	CORTEX_A9 = 0xC09,
-	CORTEX_A12 = 0xC0D,
-	CORTEX_A15 = 0xC0F,
-	CORTEX_A17 = 0xC0E,
-	CORTEX_A53 = 0xD03,
-	CORTEX_A57 = 0xD07,
-	CHIP_UNKNOWN = 0xFFF
-};
-
-struct chip_pmu {
-	enum ARM_TYPE type;
-	struct pmu_desc *desc;
-	unsigned int count;
-	const char *cpu_name;
-};
-
-static struct chip_pmu chips[] = {
-	{CORTEX_A7, a7_pmu_desc, A7_PMU_DESC_COUNT, "Cortex-A7"},
-	{CORTEX_A9, a9_pmu_desc, A9_PMU_DESC_COUNT, "Cortex-A9"},
-	{CORTEX_A12, a7_pmu_desc, A7_PMU_DESC_COUNT, "Cortex-A12"},
-	{CORTEX_A15, a7_pmu_desc, A7_PMU_DESC_COUNT, "Cortex-A15"},
-	{CORTEX_A17, a7_pmu_desc, A7_PMU_DESC_COUNT, "Cortex-A17"},
-	{CORTEX_A53, a53_pmu_desc, A53_PMU_DESC_COUNT, "Cortex-A53"},
-	{CORTEX_A57, a7_pmu_desc, A7_PMU_DESC_COUNT, "Cortex-A57"},
-};
-static struct chip_pmu chip_unknown = { CHIP_UNKNOWN, NULL, 0, "Unknown CPU" };
-
-#define CHIP_PMU_COUNT (sizeof(chips) / sizeof(struct chip_pmu))
-
-static struct chip_pmu *chip;
-
-static enum ARM_TYPE armv7_get_ic(void)
+static unsigned int armv7_get_ic(void)
 {
 	unsigned int value;
 	/* Read Main ID Register */
@@ -175,22 +140,33 @@ static void armv7_pmu_hw_reset_all(int generic_counters)
 	armv7_pmu_overflow();	/* clear overflow */
 }
 
-static int armv7_pmu_hw_get_event_desc(int i, int event, char *event_desc)
-{
-	if (event_desc == NULL)
-		return -1;
+/***********************************
+ *      MET ARM v7 operations      *
+ ***********************************/
+enum ARM_TYPE {
+	CORTEX_A7 = 0xC07,
+	CORTEX_A9 = 0xC09,
+	CORTEX_A12 = 0xC0D,
+	CORTEX_A15 = 0xC0F,
+	CORTEX_A17 = 0xC0E,
+	CORTEX_A53 = 0xD03,
+	CORTEX_A57 = 0xD07,
+	CHIP_UNKNOWN = 0xFFF
+};
 
-	for (i = 0; i < chip->count; i++) {
-		if (chip->desc[i].event == event) {
-			strncpy(event_desc, chip->desc[i].name, MXSIZE_PMU_DESC - 1);
-			break;
-		}
-	}
-	if (i == chip->count)
-		return -1;
+struct chip_pmu {
+	enum ARM_TYPE type;
+};
 
-	return 0;
-}
+static struct chip_pmu chips[] = {
+	{CORTEX_A7},
+	{CORTEX_A9},
+	{CORTEX_A12},
+	{CORTEX_A15},
+	{CORTEX_A17},
+	{CORTEX_A53},
+	{CORTEX_A57},
+};
 
 static int armv7_pmu_hw_check_event(struct met_pmu *pmu, int idx, int event)
 {
@@ -205,14 +181,6 @@ static int armv7_pmu_hw_check_event(struct met_pmu *pmu, int idx, int event)
 		/* pr_debug("++++++ found duplicate event 0x%02x i=%d\n", event, i); */
 		return -1;
 	}
-
-	for (i = 0; i < chip->count; i++) {
-		if (chip->desc[i].event == event)
-			break;
-	}
-
-	if (i == chip->count)
-		return -1;
 
 	return 0;
 }
@@ -262,10 +230,10 @@ static unsigned int armv7_pmu_hw_polling(struct met_pmu *pmu, int count, unsigne
 	return cnt;
 }
 
+static struct met_pmu	pmus[MXNR_CPU][MXNR_PMU_EVENTS];
 
 struct cpu_pmu_hw armv7_pmu = {
 	.name = "armv7_pmu",
-	.get_event_desc = armv7_pmu_hw_get_event_desc,
 	.check_event = armv7_pmu_hw_check_event,
 	.start = armv7_pmu_hw_start,
 	.stop = armv7_pmu_hw_stop,
@@ -276,27 +244,25 @@ struct cpu_pmu_hw *cpu_pmu_hw_init(void)
 {
 	int i;
 	enum ARM_TYPE type;
-	struct cpu_pmu_hw *pmu = NULL;
+	struct cpu_pmu_hw *pmu;
 
-	type = armv7_get_ic();
-	for (i = 0; i < CHIP_PMU_COUNT; i++) {
-		if (chips[i].type == type) {
-			chip = &(chips[i]);
+	type = (enum ARM_TYPE)armv7_get_ic();
+	for (i = 0; i < ARRAY_SIZE(chips); i++)
+		if (chips[i].type == type)
 			break;
-		}
-	}
 
-	if (chip != NULL) {
+	if (i < ARRAY_SIZE(chips)) {
 		armv7_pmu.nr_cnt = armv7_pmu_hw_get_counters() + 1;
-		armv7_pmu.cpu_name = chip->cpu_name;
 		pmu = &armv7_pmu;
-	} else {
+	} else
 		pmu = v6_cpu_pmu_hw_init(type);
-	}
 
-	if ((chip == NULL) && (pmu == NULL)) {
-		chip = &chip_unknown;
+	if (pmu == NULL)
 		return NULL;
+
+	for (i = 0; i < MXNR_CPU; i++) {
+		pmu->event_count[i] = pmu->nr_cnt;
+		pmu->pmu[i] = pmus[i];
 	}
 
 	return pmu;

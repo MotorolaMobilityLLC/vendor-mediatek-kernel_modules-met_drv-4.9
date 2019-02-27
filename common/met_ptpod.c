@@ -20,16 +20,24 @@
 #include "met_drv.h"
 #include "trace.h"
 #include "core_plf_init.h"
+#include "core_plf_trace.h"
 
 static int ptpod_started;
-static unsigned int g_u4CPUVolt_LL;
-static unsigned int g_u4CPUVolt_L;
-static unsigned int g_u4CPUVolt_CCI;
+//static unsigned int g_u4CPUVolt_LL;
+static unsigned int MT_GPU_DVFS_IDX = NR_MT_CPU_DVFS;
+static unsigned int g_u4Volt[NR_MT_CPU_DVFS + 1];
 static unsigned int g_u4GPUVolt;
 
-noinline void ptpod(void)
+noinline void ms_ptpod(void)
 {
-	MET_PRINTK("%u,%u,%u,%u\n", g_u4CPUVolt_LL, g_u4CPUVolt_L, g_u4CPUVolt_CCI, g_u4GPUVolt);
+//	MET_TRACE("%u,%u\n", g_u4CPUVolt_LL, g_u4GPUVolt);
+	char	*SOB, *EOB;
+
+	g_u4Volt[MT_GPU_DVFS_IDX] = g_u4GPUVolt;
+
+	MET_TRACE_GETBUF(&SOB, &EOB);
+	EOB = ms_formatD_EOL(EOB, ARRAY_SIZE(g_u4Volt), g_u4Volt);
+	MET_TRACE_PUTBUF(SOB, EOB);
 }
 
 #if 0
@@ -73,13 +81,21 @@ static void ptpod_delete(void)
 
 static void met_ptpod_polling(unsigned long long stamp, int cpu)
 {
+	int i;
+
 	if (mt_cpufreq_get_cur_volt_symbol) {
+		/*
 		g_u4CPUVolt_LL = mt_cpufreq_get_cur_volt_symbol(MT_CPU_DVFS_LL)/100;
 		g_u4CPUVolt_L = mt_cpufreq_get_cur_volt_symbol(MT_CPU_DVFS_L)/100;
 		g_u4CPUVolt_CCI = mt_cpufreq_get_cur_volt_symbol(MT_CPU_DVFS_CCI)/100;
+		*/
+//		g_u4CPUVolt_LL = mt_cpufreq_get_cur_volt_symbol(0)/100;
+
+		for (i = 0; i < NR_MT_CPU_DVFS; i++)
+			g_u4Volt[i] = mt_cpufreq_get_cur_volt_symbol(i) / 100;
 	}
 
-	ptpod();
+	ms_ptpod();
 }
 
 /*
@@ -91,16 +107,23 @@ static void ptpod_start(void)
 	met_gpufreq_setvolt_registerCB(ptpod_gpu_voltSampler, kFOR_MET_PTPOD_USE);
 #endif
 
+	int i;
+
 	if (mt_cpufreq_get_cur_volt_symbol) {
+		/*
 		g_u4CPUVolt_LL = mt_cpufreq_get_cur_volt_symbol(MT_CPU_DVFS_LL)/100;
 		g_u4CPUVolt_L = mt_cpufreq_get_cur_volt_symbol(MT_CPU_DVFS_L)/100;
 		g_u4CPUVolt_CCI = mt_cpufreq_get_cur_volt_symbol(MT_CPU_DVFS_CCI)/100;
+		*/
+//		g_u4CPUVolt_LL = mt_cpufreq_get_cur_volt_symbol(0)/100;
+		for (i = 0; i < NR_MT_CPU_DVFS; i++)
+			g_u4Volt[i] = mt_cpufreq_get_cur_volt_symbol(i) / 100;
 	}
 
 	if (mt_gpufreq_get_cur_volt_symbol)
 		g_u4GPUVolt = ((mt_gpufreq_get_cur_volt_symbol()+50)/100);
 
-	ptpod();
+	ms_ptpod();
 
 	/* register callback */
 #if 0
@@ -116,6 +139,8 @@ static void ptpod_start(void)
  */
 static void ptpod_stop(void)
 {
+	int i;
+
 	ptpod_started = 0;
 
 	/* unregister callback */
@@ -125,15 +150,20 @@ static void ptpod_stop(void)
 #endif
 
 	if (mt_cpufreq_get_cur_volt_symbol) {
+		/*
 		g_u4CPUVolt_LL = mt_cpufreq_get_cur_volt_symbol(MT_CPU_DVFS_LL)/100;
 		g_u4CPUVolt_L = mt_cpufreq_get_cur_volt_symbol(MT_CPU_DVFS_L)/100;
 		g_u4CPUVolt_CCI = mt_cpufreq_get_cur_volt_symbol(MT_CPU_DVFS_CCI)/100;
+		*/
+//		g_u4CPUVolt_LL = mt_cpufreq_get_cur_volt_symbol(0)/100;
+		for (i = 0; i < NR_MT_CPU_DVFS; i++)
+			g_u4Volt[i] = mt_cpufreq_get_cur_volt_symbol(i) / 100;
 	}
 
 	if (mt_gpufreq_get_cur_volt_symbol)
-		g_u4GPUVolt = ((mt_gpufreq_get_cur_volt_symbol()+50)/100);
+		g_u4GPUVolt = (mt_gpufreq_get_cur_volt_symbol() + 50) / 100;
 
-	ptpod();
+	ms_ptpod();
 
 #if 0
 	met_gpufreq_setvolt_registerCB(NULL, kFOR_MET_PTPOD_USE);
@@ -150,11 +180,27 @@ static int ptpod_print_help(char *buf, int len)
 /*
  * It will be called back when run "met-cmd --extract" and mode is 1
  */
-static char header[] =
-	"met-info [000] 0.0: ms_ud_sys_header: ptpod,CPUVolt_LL,CPUVolt_L,CPUVolt_CCI,GPUVolt,d,d,d,d\n";
+//static char header[] =
+//	"met-info [000] 0.0: ms_ud_sys_header: ptpod,CPUVolt_LL,GPUVolt,d,d\n";
 static int ptpod_print_header(char *buf, int len)
 {
-	return snprintf(buf, PAGE_SIZE, header);
+	int i;
+	int str_len = 0;
+
+	str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "met-info [000] 0.0: met_ptpod_header: ");
+
+	for (i = 0; i < NR_MT_CPU_DVFS; i++)
+		str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "CPUVolt_%d,", i);
+
+	str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "GPUVolt,");
+
+	for (i = 0; i < NR_MT_CPU_DVFS + 1; i++)
+		str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "d,");
+
+	buf[str_len - 1] = '\n';
+
+	return str_len;
+//	return snprintf(buf, PAGE_SIZE, header);
 }
 
 struct metdevice met_ptpod = {

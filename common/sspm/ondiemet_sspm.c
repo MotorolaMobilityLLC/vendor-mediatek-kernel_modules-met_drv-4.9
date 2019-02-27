@@ -15,7 +15,6 @@
 #include "ondiemet_sspm.h"
 #define MET_USER_EVENT_SUPPORT
 #include "met_drv.h"
-#include "interface.h"
 
 #ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
 #ifdef CONFIG_MET_ARM_32BIT
@@ -356,8 +355,13 @@ void sspm_start(void)
 		return;
 
 	platform_name = met_get_platform_name();
-	if (platform_name)
-		ret = kstrtouint(&platform_name[2], 10, &platform_id);
+	if (platform_name) {
+		char buf[5];
+
+		memset(buf, 0x0, 5);
+		memcpy(buf, &platform_name[2], 4);
+		ret = kstrtouint(buf, 10, &platform_id);
+	}
 
 	/* send DRAM physical address */
 	ipi_buf[0] = MET_MAIN_ID | MET_BUFFER_INFO;

@@ -11,8 +11,8 @@
  * GNU General Public License for more details.
  */
 
-#ifndef _PMU_H_
-#define _PMU_H_
+#ifndef _CPU_PMU_H_
+#define _CPU_PMU_H_
 
 #include <linux/device.h>
 
@@ -21,8 +21,9 @@
 #define MODE_POLLING	2
 
 #define MXSIZE_PMU_DESC 32
-#define MXNR_CPU 16
+#define MXNR_CPU	NR_CPUS
 
+#define	MXNR_PMU_EVENTS	8	/* max number of pmu counter for armv8 is 6+1 */
 struct met_pmu {
 	unsigned char mode;
 	unsigned short event;
@@ -39,7 +40,8 @@ struct cpu_pmu_hw {
 	void (*start)(struct met_pmu *pmu, int count);
 	void (*stop)(int count);
 	unsigned int (*polling)(struct met_pmu *pmu, int count, unsigned int *pmu_value);
-	struct met_pmu *pmu;
+	struct met_pmu *pmu[MXNR_CPU];
+	int event_count[MXNR_CPU];
 };
 
 struct pmu_desc {
@@ -52,10 +54,9 @@ struct cpu_pmu_hw *cpu_pmu_hw_init(void);
 extern struct cpu_pmu_hw *cpu_pmu;
 extern noinline void mp_cpu(unsigned char cnt, unsigned int *value);
 
-extern void met_perf_cpupmu_start(void);
-extern void met_perf_cpupmu_stop(void);
+extern int met_perf_cpupmu_status;
 extern void met_perf_cpupmu_online(unsigned int cpu);
 extern void met_perf_cpupmu_down(void *cpu);
-extern void cpupmu_polling(unsigned long long stamp, int cpu);
+extern void met_perf_cpupmu_polling(unsigned long long stamp, int cpu);
 
-#endif				/* _PMU_H_ */
+#endif	/* _CPU_PMU_H_ */

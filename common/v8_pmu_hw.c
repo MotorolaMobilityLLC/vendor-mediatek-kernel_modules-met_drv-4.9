@@ -11,11 +11,13 @@
  * GNU General Public License for more details.
  */
 
-#include <linux/smp.h>
-#include "interface.h"
+#include <asm/cpu.h>
+#include "met_kernel_symbol.h"
 #include "cpu_pmu.h"
-#include "v8_pmu_name.h"
 
+/*******************************
+ *      ARM v8 operations      *
+ *******************************/
 /*
  * Per-CPU PMCR: config reg
  */
@@ -25,55 +27,15 @@
 #define ARMV8_PMCR_D		(1 << 3)	/* CCNT counts every 64th cpu cycle */
 #define ARMV8_PMCR_X		(1 << 4)	/* Export to ETM */
 #define ARMV8_PMCR_DP		(1 << 5)	/* Disable CCNT if non-invasive debug */
-#define	ARMV8_PMCR_N_SHIFT	11	/* Number of counters supported */
+#define	ARMV8_PMCR_N_SHIFT	11		/* Number of counters supported */
 #define	ARMV8_PMCR_N_MASK	0x1f
-#define	ARMV8_PMCR_MASK		0x3f	/* Mask for writable bits */
+#define	ARMV8_PMCR_MASK		0x3f		/* Mask for writable bits */
 
 /*
  * PMOVSR: counters overflow flag status reg
  */
 #define	ARMV8_OVSR_MASK		0xffffffff	/* Mask for writable bits */
 #define	ARMV8_OVERFLOWED_MASK	ARMV8_OVSR_MASK
-
-
-enum ARM_TYPE {
-	CORTEX_A53 = 0xD03,
-	CORTEX_A35 = 0xD04,
-	CORTEX_A57 = 0xD07,
-	CORTEX_A72 = 0xD08,
-	CORTEX_A73 = 0xD09,
-	CHIP_UNKNOWN = 0xFFF
-};
-
-struct chip_pmu {
-	enum ARM_TYPE type;
-	struct pmu_desc *desc;
-	unsigned int count;
-	const char *cpu_name;
-};
-
-static struct chip_pmu chips[] = {
-	{CORTEX_A53, a53_pmu_desc, A53_PMU_DESC_COUNT, "Cortex-A7L"},
-	{CORTEX_A35, a53_pmu_desc, A53_PMU_DESC_COUNT, "Cortex-A35"},
-	{CORTEX_A57, a53_pmu_desc, A53_PMU_DESC_COUNT, "Cortex-A57"},
-	{CORTEX_A72, a53_pmu_desc, A53_PMU_DESC_COUNT, "Cortex-A72"},
-	{CORTEX_A73, a53_pmu_desc, A53_PMU_DESC_COUNT, "Cortex-A73"},
-};
-static struct chip_pmu chip_unknown = { CHIP_UNKNOWN, NULL, 0, "Unknown CPU" };
-
-#define CHIP_PMU_COUNT (sizeof(chips) / sizeof(struct chip_pmu))
-
-static struct chip_pmu *chip;
-
-static enum ARM_TYPE armv8_get_ic(void)
-{
-	unsigned int value;
-	/* Read Main ID Register */
-	asm("mrs %0, midr_el1":"=r"(value));
-
-	value = (value & 0xffff) >> 4;	/* primary part number */
-	return value;
-}
 
 static inline void armv8_pmu_counter_select(unsigned int idx)
 {
@@ -98,16 +60,6 @@ static inline unsigned int armv8_pmu_read_count(unsigned int idx)
 		asm volatile ("mrs %0, pmxevcntr_el0":"=r" (value));
 	}
 	return value;
-}
-
-static inline void armv8_pmu_write_count(int idx, u32 value)
-{
-	if (idx == 31) {
-		asm volatile ("msr pmccntr_el0, %0"::"r" (value));
-	} else {
-		armv8_pmu_counter_select(idx);
-		asm volatile ("msr pmxevcntr_el0, %0"::"r" (value));
-	}
 }
 
 static inline void armv8_pmu_enable_count(unsigned int idx)
@@ -158,14 +110,6 @@ static inline void armv8_pmu_control_write(u32 val)
 	asm volatile ("msr pmcr_el0, %0"::"r" (val));
 }
 
-static int armv8_pmu_hw_get_counters(void)
-{
-	int count = armv8_pmu_control_read();
-	/* N, bits[15:11] */
-	count = ((count >> ARMV8_PMCR_N_SHIFT) & ARMV8_PMCR_N_MASK);
-	return count;
-}
-
 static void armv8_pmu_hw_reset_all(int generic_counters)
 {
 	int i;
@@ -182,22 +126,34 @@ static void armv8_pmu_hw_reset_all(int generic_counters)
 	armv8_pmu_overflow();	/* clear overflow */
 }
 
-static int armv8_pmu_hw_get_event_desc(int i, int event, char *event_desc)
-{
-	if (event_desc == NULL)
-		return -1;
+/***********************************
+ *      MET ARM v8 operations      *
+ ***********************************/
+enum ARM_TYPE {
+	CORTEX_A53 = 0xD03,
+	CORTEX_A35 = 0xD04,
+	CORTEX_A55 = 0xD05,
+	CORTEX_A57 = 0xD07,
+	CORTEX_A72 = 0xD08,
+	CORTEX_A73 = 0xD09,
+	CORTEX_A75 = 0xD0A,
+	CHIP_UNKNOWN = 0xFFF
+};
 
-	for (i = 0; i < chip->count; i++) {
-		if (chip->desc[i].event == event) {
-			strncpy(event_desc, chip->desc[i].name, MXSIZE_PMU_DESC - 1);
-			break;
-		}
-	}
-	if (i == chip->count)
-		return -1;
+struct chip_pmu {
+	enum ARM_TYPE	type;
+	unsigned int	event_count;
+};
 
-	return 0;
-}
+static struct chip_pmu	chips[] = {
+	{CORTEX_A35, 6+1},
+	{CORTEX_A53, 6+1},
+	{CORTEX_A55, 6+1},
+	{CORTEX_A57, 6+1},
+	{CORTEX_A72, 6+1},
+	{CORTEX_A73, 6+1},
+	{CORTEX_A75, 6+1},
+};
 
 static int armv8_pmu_hw_check_event(struct met_pmu *pmu, int idx, int event)
 {
@@ -212,14 +168,6 @@ static int armv8_pmu_hw_check_event(struct met_pmu *pmu, int idx, int event)
 		/* pr_debug("++++++ found duplicate event 0x%02x i=%d\n", event, i); */
 		return -1;
 	}
-
-	for (i = 0; i < chip->count; i++) {
-		if (chip->desc[i].event == event)
-			break;
-	}
-
-	if (i == chip->count)
-		return -1;
 
 	return 0;
 }
@@ -269,36 +217,43 @@ static unsigned int armv8_pmu_hw_polling(struct met_pmu *pmu, int count, unsigne
 	return cnt;
 }
 
+static struct met_pmu	pmus[MXNR_CPU][MXNR_PMU_EVENTS];
 
 struct cpu_pmu_hw armv8_pmu = {
 	.name = "armv8_pmu",
-	.get_event_desc = armv8_pmu_hw_get_event_desc,
 	.check_event = armv8_pmu_hw_check_event,
 	.start = armv8_pmu_hw_start,
 	.stop = armv8_pmu_hw_stop,
 	.polling = armv8_pmu_hw_polling,
 };
 
-struct cpu_pmu_hw *cpu_pmu_hw_init(void)
+static void init_pmus(void)
 {
-	int i;
-	enum ARM_TYPE type;
+	int	cpu;
+	int	i;
 
-	type = armv8_get_ic();
-	PR_BOOTMSG("CPU TYPE - v8: %x\n", (unsigned int)type);
-	for (i = 0; i < CHIP_PMU_COUNT; i++) {
-		if (chips[i].type == type) {
-			chip = &(chips[i]);
-			break;
+	for_each_possible_cpu(cpu) {
+		struct cpuinfo_arm64 *cpuinfo;
+		if (cpu >= MXNR_CPU)
+			continue;
+		met_get_cpuinfo_symbol(cpu, &cpuinfo);
+		/* PR_BOOTMSG("CPU[%d]: reg_midr = %x\n", cpu, cpuinfo->reg_midr); */
+		for (i = 0; i < ARRAY_SIZE(chips); i++) {
+			if (chips[i].type == (cpuinfo->reg_midr & 0xffff) >> 4) {
+				armv8_pmu.event_count[cpu] = chips[i].event_count;
+				break;
+			}
 		}
 	}
-	if (i == CHIP_PMU_COUNT) {
-		chip = &chip_unknown;
-		return NULL;
-	}
+}
 
-	armv8_pmu.nr_cnt = armv8_pmu_hw_get_counters() + 1;
-	armv8_pmu.cpu_name = chip->cpu_name;
+struct cpu_pmu_hw *cpu_pmu_hw_init(void)
+{
+	int	cpu;
+
+	init_pmus();
+	for (cpu = 0; cpu < MXNR_CPU; cpu++)
+		armv8_pmu.pmu[cpu] = pmus[cpu];
 
 	return &armv8_pmu;
 }

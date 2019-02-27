@@ -27,6 +27,7 @@
 #include "core_plf_init.h"
 /* #include "plf_trace.h" */
 #include "mtk_emi_bm.h"
+#include "interface.h"
 
 #ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
 #include "sspm/ondiemet_sspm.h"
@@ -433,7 +434,6 @@ DECLARE_KOBJ_TTYPE_BUSID_VAL(21);
 		KOBJ_ATTR_ITEM(test); \
 	} while (0)
 
-
 /*======================================================================*/
 /*	EMI Operations							*/
 /*======================================================================*/
@@ -562,11 +562,6 @@ static void emi_init(void)
 
 }
 
-static void emi_uninit(void)
-{
-	MET_BM_RestoreCfg();
-}
-
 static inline int do_emi(void)
 {
 	return met_sspm_emi.mode;
@@ -635,15 +630,18 @@ static void met_emi_resume(void)
 	emi_init();
 }
 
+
+#ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
 static const char help[] = "  --emi                                 monitor EMI banwidth\n";
+
+#define TTYPE_NAME_STR_LEN  64
+static char ttype_name[21][TTYPE_NAME_STR_LEN];
+
 static int emi_print_help(char *buf, int len)
 {
 	return snprintf(buf, PAGE_SIZE, help);
 }
 
-
-#define TTYPE_NAME_STR_LEN  64
-static char ttype_name[21][TTYPE_NAME_STR_LEN];
 static int emi_print_header(char *buf, int len)
 {
 	int ret = 0;
@@ -763,8 +761,6 @@ static int emi_print_header(char *buf, int len)
 	return ret;
 }
 
-
-#ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
 static int ondiemet_emi_print_header(char *buf, int len)
 {
 	return emi_print_header(buf, len);
@@ -790,7 +786,8 @@ static void ondiemet_emi_start(void)
 	if (!emi_inited) {
 		if (MET_BM_Init() != 0) {
 			met_sspm_emi.mode = 0;
-			pr_err("MET_BM_Init failed!!!\n");
+			pr_notice("MET_BM_Init failed!!!\n");
+			PR_BOOTMSG("MET_BM_Init failed!!!\n");
 			return;
 		}
 		emi_inited = 1;
@@ -801,6 +798,11 @@ static void ondiemet_emi_start(void)
 		emi_init();
 
 	ondiemet_module[ONDIEMET_SSPM] |= ID_EMI;
+}
+
+static void emi_uninit(void)
+{
+	MET_BM_RestoreCfg();
 }
 
 static void ondiemet_emi_stop(void)
