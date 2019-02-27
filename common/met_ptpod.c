@@ -321,15 +321,7 @@ static int ptpod_print_header(char *buf, int len)
 			str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "CPUVolt_%d,", i);
 
 		if (gpu_volt_enable)
-			str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "GPUVolt,");
-
-		for (i = 0; i < NR_MT_CPU_DVFS; i++)
-			str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "d,");
-
-		if (gpu_volt_enable)
-			str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "d,");
-
-		buf[str_len - 1] = '\n';
+			str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "GPUVolt\n");
 
 		str_len += snprintf(buf + str_len, PAGE_SIZE - str_len,
 							"met-info [000] 0.0: met_ptpod_version: ap\n");
@@ -338,9 +330,7 @@ static int ptpod_print_header(char *buf, int len)
 			str_len += snprintf(buf + str_len, PAGE_SIZE - str_len,
 							"met-info [000] 0.0: met_ptpod_header: ");
 
-			str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "GPUVolt,");
-			str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "d,");
-			buf[str_len - 1] = '\n';
+			str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "GPUVolt\n");
 		}
 
 		str_len += snprintf(buf + str_len, PAGE_SIZE - str_len,
