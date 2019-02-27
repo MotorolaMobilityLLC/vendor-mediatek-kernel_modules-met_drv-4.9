@@ -1,25 +1,24 @@
 $(info ======== Build met.ko ... ========)
-MET_DIR := $(wildcard $(src)/$(subst ",,$(CONFIG_MTK_PLATFORM)))
-
-ifeq ($(MET_DIR), mt6761)
-MET_DIR := 6765
-else ifeq ($(MET_DIR), mt6762)
-MET_DIR := 6765
+ifeq ($(MTK_PLATFORM), mt6761)
+MET_DIR := $(srctree)/../vendor/mediatek/kernel_modules/met_drv/4.9/mt6765
+else ifeq ($(MTK_PLATFORM), mt6762)
+MET_DIR := $(srctree)/../vendor/mediatek/kernel_modules/met_drv/4.9/mt6765
+else
+MET_DIR := $(srctree)/../vendor/mediatek/kernel_modules/met_drv/4.9/$(MTK_PLATFORM)
 endif
 
 ifneq ($(MET_DIR),)
-    MET_PLF_USE := $(shell test -f $(MET_DIR)/Kbuild && echo yes)
-    ifeq ($(MET_PLF_USE),yes)
-        include $(MET_DIR)/Kbuild
-        ccflags-y += -DMET_PLF_USE
-    else
-        $(info ======== NOT MET_PLF_USE ========)
-    endif
+	ifneq ("$(wildcard $(MET_DIR)/Kbuild))","")
+		include $(MET_DIR)/Kbuild
+	else
+                $(info ======== NOT MET_PLF_USE ========)
+	endif
 endif
 
 
 MET_CORE := common
 obj-m := met.o
+ccflags-y += -DMET_PLF_USE
 ccflags-y += -I$(srctree)/include/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
@@ -33,22 +32,22 @@ endif
 ccflags-y += $(EXTRA_ARGS) $(EXTRA_CFLAGS)
 
 met-y := $(MET_CORE)/met_main.o \
-		 $(MET_CORE)/met_backlight.o \
-		 $(MET_CORE)/met_tag_ex.o \
-		 $(MET_CORE)/interface.o \
-		 $(MET_CORE)/sampler.o \
-		 $(MET_CORE)/dummy_header.o \
-		 $(MET_CORE)/util.o \
-		 $(MET_CORE)/stat.o \
-		 $(MET_CORE)/cookie.o \
-		 $(MET_CORE)/mem_stat.o \
-		 $(MET_CORE)/switch.o \
-		 $(MET_CORE)/trace_event.o \
-		 $(MET_CORE)/core_plf_init.o \
-		 $(MET_CORE)/core_plf_trace.o \
-		 $(MET_CORE)/ondiemet.o \
-		 $(MET_CORE)/ondiemet_log.o \
-		 $(MET_CORE)/sspm/ondiemet_sspm.o
+	$(MET_CORE)/met_backlight.o \
+	$(MET_CORE)/met_tag_ex.o \
+	$(MET_CORE)/interface.o \
+	$(MET_CORE)/sampler.o \
+	$(MET_CORE)/dummy_header.o \
+	$(MET_CORE)/util.o \
+	$(MET_CORE)/stat.o \
+	$(MET_CORE)/cookie.o \
+	$(MET_CORE)/mem_stat.o \
+	$(MET_CORE)/switch.o \
+	$(MET_CORE)/trace_event.o \
+	$(MET_CORE)/core_plf_init.o \
+	$(MET_CORE)/core_plf_trace.o \
+	$(MET_CORE)/ondiemet.o \
+	$(MET_CORE)/ondiemet_log.o \
+	$(MET_CORE)/sspm/ondiemet_sspm.o
 
 CFLAGS_interface.o += -DMET_USER_EVENT_SUPPORT
 CFLAGS_met_tag_ex.o += -DMET_USER_EVENT_SUPPORT
@@ -78,7 +77,7 @@ met-$(CONFIG_CPU_FREQ) += $(MET_CORE)/power.o
 MET_EMI := y
 
 met-$(MET_EMI) += $(MET_CORE)/met_emi.o \
-				  $(MET_CORE)/mtk_emi_bm.o
+		$(MET_CORE)/mtk_emi_bm.o
 
 
 ################################################################################
@@ -91,7 +90,8 @@ ifneq ("$(wildcard $(srctree)/drivers/misc/mediatek/base/power/$(MTK_PLATFORM)/m
 	ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/$(MTK_PLATFORM)/
 else
 	MET_GPU = n
-    $(info ======== Missing mtk_gpufreq.h ========)
+        $(info ======= Missing $(srctree)/drivers/misc/mediatek/base/power/$(MTK_PLATFORM)/mtk_gpufreq.h ========)
+        $(info ======== disable MET_GPU ========)
 endif
 
 # for mtk_gpu_utility.h
@@ -99,7 +99,8 @@ ifneq ("$(wildcard $(srctree)/drivers/misc/mediatek/include/mt-plat/mtk_gpu_util
 	ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
 else
 	MET_GPU = n
-    $(info ======== Missing mtk_gpu_utility.h ========)
+        $(info ======== $(srctree)/drivers/misc/mediatek/include/mt-plat/mtk_gpu_utility.h ========)
+        $(info ======== disable MET_GPU ========)
 endif
 
 met-$(MET_GPU) += $(MET_CORE)/mtk_gpu_metmonitor.o
@@ -115,7 +116,8 @@ ifneq ("$(wildcard $(MET_VCOREDVFS_INC)/mtk_vcorefs_manager.h)","")
 	ccflags-y += -I$(MET_VCOREDVFS_INC)/
 else
 	MET_VCOREDVFS = n
-    $(info ======== Missing mtk_vcorefs_manager.h ========)
+        $(info ======== Missing $(MET_VCOREDVFS_INC)/mtk_vcorefs_manager.h ========)
+        $(info ======== disable MET_VCOREDVFS ========)
 endif
 
 # for mtk_vcorefs_governor.h
@@ -123,7 +125,8 @@ ifneq ("$(wildcard $(MET_VCOREDVFS_INC)/mtk_vcorefs_governor.h)","")
 	ccflags-y += -I$(MET_VCOREDVFS_INC)
 else
 	MET_VCOREDVFS = n
-    $(info ======== Missing mtk_vcorefs_governor.h ========)
+        $(info ======== Missing $(MET_VCOREDVFS_INC)/mtk_vcorefs_governor.h ========)
+        $(info ======== disable MET_VCOREDVFS ========)
 endif
 
 # for helio-dvfsrc.h
@@ -131,7 +134,8 @@ ifneq ("$(wildcard $(srctree)/drivers/devfreq/helio-dvfsrc.h)","")
 	ccflags-y += -I$(srctree)/drivers/devfreq/
 else
 	MET_VCOREDVFS = n
-    $(info ======== Missing helio-dvfsrc.h ========)
+        $(info ======== Missing $(srctree)/drivers/devfreq/helio-dvfsrc.h ========)
+        $(info ======== disable MET_VCOREDVFS ========)
 endif
 
 met-$(MET_VCOREDVFS) += $(MET_CORE)/met_vcoredvfs.o
@@ -147,7 +151,8 @@ ifneq ("$(wildcard $(srctree)/drivers/misc/mediatek/base/power/$(MTK_PLATFORM)/m
 	ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/$(MTK_PLATFORM)/
 else
 	MET_PTPOD = n
-    $(info ======== Missing mtk_gpufreq.h ========)
+        $(info ======== Missing $(srctree)/drivers/misc/mediatek/base/power/$(MTK_PLATFORM)/mtk_gpufreq.h ========)
+        $(info ======== disable MET_PTPOD ========)
 endif
 
 # for mtk_cpufreq_api.h
@@ -155,7 +160,8 @@ ifneq ("$(wildcard $(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFO
 	ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
 else
 	MET_PTPOD = n
-    $(info ======== Missing mtk_cpufreq_api.h ========)
+        $(info ======== Missing $(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach/mtk_cpufreq_api.h ========)
+        $(info ======== disable MET_PTPOD ========)
 endif
 
 # for mtk_cpufreq_config.h
@@ -163,7 +169,8 @@ ifneq ("$(wildcard $(MET_PTPOD_INC)/mtk_cpufreq_config.h)","")
 	ccflags-y += -I$(MET_PTPOD_INC)
 else
 	MET_PTPOD = n
-    $(info ======== Missing mtk_cpufreq_config.h ========)
+        $(info ======== Missing $(MET_PTPOD_INC)/mtk_cpufreq_config.h ========)
+        $(info ======== disable MET_PTPOD ========)
 endif
 
 met-$(MET_PTPOD) += $(MET_CORE)/met_ptpod.o

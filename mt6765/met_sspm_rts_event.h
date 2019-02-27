@@ -11,4 +11,3 @@
  * See http://www.gnu.org/licenses/gpl-2.0.html for more details.
  */
 MET_SSPM_RTS_EVNET(SSPM_PTPOD, "_id,voltage")
-MET_SSPM_RTS_EVNET(SSPM_CPU_DVFS, "_id,frequency")

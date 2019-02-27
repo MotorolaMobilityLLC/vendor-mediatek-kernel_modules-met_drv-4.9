@@ -63,8 +63,6 @@ extern bool (*mtk_get_gpu_pmu_swapnreset_symbol)(GPU_PMU *pmus, int pmu_size);
 extern bool (*mtk_get_gpu_pmu_deinit_symbol)(void);
 extern bool (*mtk_get_gpu_pmu_swapnreset_stop_symbol)(void);
 
-typedef void (*gpu_power_change_notify_fp) (int power_on);
-
 extern bool mtk_register_gpu_power_change(const char *name, gpu_power_change_notify_fp callback);
 extern bool mtk_unregister_gpu_power_change(const char *name);
 extern bool (*mtk_register_gpu_power_change_symbol)(const char *name,
