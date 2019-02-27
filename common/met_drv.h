@@ -145,7 +145,9 @@ struct metdevice {
 	int __percpu *polling_count;
 	int header_read_again;	/*for header size > 1 page */
 	void (*start)(void);
+	void (*uniq_start)(void);
 	void (*stop)(void);
+	void (*uniq_stop)(void);
 	int (*reset)(void);
 	void (*timed_polling)(unsigned long long stamp, int cpu);
 	void (*tagged_polling)(unsigned long long stamp, int cpu);
