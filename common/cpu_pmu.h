@@ -55,8 +55,6 @@ extern struct cpu_pmu_hw *cpu_pmu;
 extern noinline void mp_cpu(unsigned char cnt, unsigned int *value);
 
 extern int met_perf_cpupmu_status;
-extern void met_perf_cpupmu_online(unsigned int cpu);
-extern void met_perf_cpupmu_down(void *cpu);
 extern void met_perf_cpupmu_polling(unsigned long long stamp, int cpu);
 
 #endif	/* _CPU_PMU_H_ */

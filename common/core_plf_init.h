@@ -85,6 +85,7 @@ extern struct metdevice met_gpu_pmu;
 /*
  *   VCORE DVFS
  */
+extern int vcorefs_get_num_opp(void);
 extern int  vcorefs_get_opp_info_num(void);
 extern char ** vcorefs_get_opp_info_name(void);
 extern unsigned int * vcorefs_get_opp_info(void);

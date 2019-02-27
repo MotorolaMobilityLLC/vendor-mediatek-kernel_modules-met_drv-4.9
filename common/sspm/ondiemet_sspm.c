@@ -18,7 +18,7 @@
 #include "met_drv.h"
 
 #ifdef CONFIG_MTK_TINYSYS_SSPM_SUPPORT
-#ifdef CONFIG_MTK_GMO_RAM_OPTIMIZE
+#if defined(CONFIG_MTK_GMO_RAM_OPTIMIZE) || defined(CONFIG_MTK_MET_MEM_ALLOC)
 #ifdef CONFIG_MET_ARM_32BIT
 #include <asm/dma-mapping.h> /* arm_coherent_dma_ops */
 #else /* CONFIG_MET_ARM_32BIT */
@@ -220,7 +220,7 @@ int sspm_attr_init(struct device *dev)
 {
 	int ret;
 
-#ifdef CONFIG_MTK_GMO_RAM_OPTIMIZE
+#if defined(CONFIG_MTK_GMO_RAM_OPTIMIZE) || defined(CONFIG_MTK_MET_MEM_ALLOC)
 #ifdef CONFIG_MET_ARM_32BIT
 	struct dma_map_ops *ops = (struct dma_map_ops *)symbol_get(arm_coherent_dma_ops);
 
@@ -315,7 +315,7 @@ int sspm_attr_uninit(struct device *dev)
 {
 	/* dma_free */
 	if (ondiemet_sspm_log_virt_addr != NULL) {
-#ifdef CONFIG_MTK_GMO_RAM_OPTIMIZE
+#if defined(CONFIG_MTK_GMO_RAM_OPTIMIZE) || defined(CONFIG_MTK_MET_MEM_ALLOC)
 #ifdef CONFIG_MET_ARM_32BIT
 		struct dma_map_ops *ops = (struct dma_map_ops *)symbol_get(arm_coherent_dma_ops);
 
