@@ -41,7 +41,7 @@ int sspm_log_mode;
 /* SSPM_RUN_CONTINUOUS mode 1 */
 int sspm_run_mode;
 int met_sspm_log_discard = -1;
-int sspm_log_size = 100;
+int sspm_log_size = 500;
 
 int sspm_buffer_size;
 int sspm_buf_available;

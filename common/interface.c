@@ -182,10 +182,9 @@ static DEVICE_ATTR(suspend_compensation_enable, 0664, suspend_compensation_enabl
 static ssize_t suspend_compensation_flag_show(struct device *dev, struct device_attribute *attr, char *buf);
 static DEVICE_ATTR(suspend_compensation_flag, 0444, suspend_compensation_flag_show, NULL);
 
-
 static ssize_t ipi_test_store(struct device *dev, struct device_attribute *attr, const char *buf,
 			 size_t count);
-static DEVICE_ATTR(ipi_test, 0664, NULL, ipi_test_store);
+static DEVICE_ATTR(ipi_test, 0220, NULL, ipi_test_store);
 
 static const struct file_operations met_file_ops = {
 	.owner = THIS_MODULE
@@ -334,6 +333,7 @@ static void _test_trace_ipi_raise(void *info)
 	if (arch_send_call_function_single_ipi_sym)
 		arch_send_call_function_single_ipi_sym(*cpu);
 }
+
 
 static ssize_t ipi_test_store(struct device *dev, struct device_attribute *attr, const char *buf,
 			 size_t count)

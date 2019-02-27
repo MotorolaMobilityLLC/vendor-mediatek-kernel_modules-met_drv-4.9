@@ -43,7 +43,9 @@ struct cpu_type_name {
 
 static struct cpu_type_name met_known_cpu_type[] = {
 	{"arm,cortex-a53", "CA53"},
+	{"arm,cortex-a55", "CA55"},
 	{"arm,cortex-a73", "CA73"},
+	{"arm,cortex-a75", "CA75"},
 };
 #define MET_KNOWN_CPU_TYPE_COUNT \
 	(sizeof(met_known_cpu_type)/sizeof(struct cpu_type_name))
