@@ -7,14 +7,10 @@ MET_PTPOD_INC := $(srctree)/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach
 ################################################################################
 # Feature Spec
 # CPUPMU_VERSION: V8_0/V8_2
+# EMI_SEDA_VERSION: SEDA2/SEDA3/SEDA3_5
 ################################################################################
 CPUPMU_VERSION := V8_2
-
+EMI_SEDA_VERSION := SEDA3_5
 ################################################################################
 # Feature On/Off
 ################################################################################
-FEATURE_SSPM_EMI := on
-FEATURE_GPU := on
-FEATURE_VCOREDVFS := on
-FEATURE_PTPOD := on
-FEATURE_ONDIEMET := on
