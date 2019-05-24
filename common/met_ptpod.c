@@ -22,7 +22,6 @@
 #include "core_plf_init.h"
 #include "core_plf_trace.h"
 
-
 static unsigned int MT_GPU_DVFS_IDX = NR_MT_CPU_DVFS;
 static unsigned int g_u4GPUVolt;
 static unsigned int g_u4Volt[NR_MT_CPU_DVFS + 1];
@@ -332,7 +331,9 @@ static int ptpod_print_header(char *buf, int len)
 		}
 
 		if (gpu_volt_enable)
-			str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "GPUVolt\n");
+			str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "GPUVolt,");
+
+		buf[str_len-1] = '\n';
 
 		str_len += snprintf(buf + str_len, PAGE_SIZE - str_len,
 							"met-info [000] 0.0: met_ptpod_version: ap\n");

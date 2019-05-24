@@ -82,6 +82,15 @@ enum {
 	MID_PTPOD,
 	MID_SPM,
 	MID_PROFILE,
+	MID_MET_TAG,
+	MID_TS,
+	MID_TS_ISR,
+	MID_TS_LAST,
+	MID_TS_ISR_LAST,
+	MID_SRAM_INFO,
+	MID_MET_STOP,
+	MID_IOP_MON,
+	MID_CPU_INFO_MAPPING,
 
 	MID_COMMON = 0x1F
 };
@@ -98,7 +107,7 @@ enum {
 #define ID_SPM         (1 << MID_SPM)
 #define ID_PROFILE     (1 << MID_PROFILE)
 #define ID_COMMON      (1 << MID_COMMON)
-
+#define ID_CPU_INFO_MAPPING      (1 << MID_CPU_INFO_MAPPING)
 
 extern void ondiemet_extract(void);
 extern void ondiemet_stop(void);
