@@ -318,7 +318,18 @@ static int ptpod_print_header(char *buf, int len)
 						"met-info [000] 0.0: met_ptpod_header: ");
 
 		for (i = 0; i < NR_MT_CPU_DVFS; i++)
-			str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "CPUVolt_%d,", i);
+		{
+#ifdef MT_CPU_DVFS_CCI
+			if( i == MT_CPU_DVFS_CCI )
+			{
+				str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "CPUVolt_CCI,", i);
+			}
+			else
+#endif
+			{
+				str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "CPUVolt_%d,", i);
+			}
+		}
 
 		if (gpu_volt_enable)
 			str_len += snprintf(buf + str_len, PAGE_SIZE - str_len, "GPUVolt\n");
