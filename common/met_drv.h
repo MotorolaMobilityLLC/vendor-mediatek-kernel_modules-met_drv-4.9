@@ -182,7 +182,7 @@ int met_devlink_del(struct metdevice *met);
 int met_devlink_register_all(void);
 int met_devlink_deregister_all(void);
 
-int fs_reg(void);
+int fs_reg(int met_minor);
 void fs_unreg(void);
 
 /******************************************************************************

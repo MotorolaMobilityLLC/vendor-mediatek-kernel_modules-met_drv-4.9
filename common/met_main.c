@@ -13,6 +13,7 @@
 
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/moduleparam.h>
 #include <linux/hrtimer.h>
 #include <linux/cpu.h>
 #include <linux/mm.h>
@@ -69,6 +70,9 @@ struct task_struct *(*met_kthread_create_on_cpu_symbol)(int (*threadfn)(void *da
 				void *data, unsigned int cpu,
 				const char *namefmt);
 int (*met_smp_call_function_single_symbol)(int cpu, smp_call_func_t func, void *info, int wait);
+
+static int met_minor = -1;
+module_param(met_minor, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
 
 const char *met_get_platform_name(void)
@@ -231,7 +235,12 @@ static int __init met_drv_init(void)
 		pr_notice("[MET] met_kernel_symbol_get fail, ret = %d\n", ret);
 		return ret;
 	}
-	fs_reg();
+	ret = fs_reg(met_minor);
+	if (ret) {
+		pr_notice("[MET] met fs_reg fail, ret = %d\n", ret);
+		return ret;
+	}
+
 
 	if (of_root){
 		/*

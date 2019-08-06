@@ -1147,9 +1147,9 @@ static struct syscore_ops met_hrtimer_ops = {
 };
 #endif
 
-int fs_reg(void)
+int fs_reg(int met_minor)
 {
-	int ret = 0;
+	int ret = -1;
 
 	ctrl_flags = 0;
 	met_mode = 0;
@@ -1161,9 +1161,11 @@ int fs_reg(void)
 
 	calc_timer_value(sample_rate);
 
+	if ( met_minor != -1)
+		met_device.minor = met_minor;
 	ret = misc_register(&met_device);
 	if (ret != 0) {
-		pr_debug("misc register failed\n");
+		pr_debug("misc register failed, minor = %d \n", met_device.minor);
 		return ret;
 	}
 
@@ -1276,19 +1278,19 @@ int fs_reg(void)
 	kobj_misc = kobject_create_and_add("misc", &met_device.this_device->kobj);
 	if (kobj_misc == NULL) {
 		pr_debug("can not create kobject: kobj_misc\n");
-		return ret;
+		return -1;
 	}
 
 	kobj_pmu = kobject_create_and_add("pmu", &met_device.this_device->kobj);
 	if (kobj_pmu == NULL) {
 		pr_debug("can not create kobject: kobj_pmu\n");
-		return ret;
+		return -1;
 	}
 
 	kobj_bus = kobject_create_and_add("bus", &met_device.this_device->kobj);
 	if (kobj_bus == NULL) {
 		pr_debug("can not create kobject: kobj_bus\n");
-		return ret;
+		return -1;
 	}
 
 	met_register(&met_cookie);
@@ -1311,7 +1313,7 @@ int fs_reg(void)
 	ondiemet_log_manager_init(met_device.this_device);
 	ondiemet_attr_init(met_device.this_device);
 
-	return ret;
+	return 0;
 }
 
 void fs_unreg(void)
