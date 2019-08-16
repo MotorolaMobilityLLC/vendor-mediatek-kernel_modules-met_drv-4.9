@@ -38,6 +38,11 @@ extern struct metdevice met_backlight;
 /*     others: via Linux perf driver */
 extern unsigned int met_cpu_pmu_method;
 
+/*
+ * controls whether re-configuring pmu events after leaving cpu off state
+ */
+extern unsigned int met_cpu_pm_pmu_reconfig;
+
 extern int met_parse_num(const char *str, unsigned int *value, int len);
 extern void met_set_suspend_notify(int flag);
 

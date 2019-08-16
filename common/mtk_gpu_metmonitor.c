@@ -21,10 +21,12 @@
 #include <linux/mm.h>
 #include <linux/slab.h>
 #include <asm/uaccess.h>
+#include <linux/io.h>
 #include <linux/hrtimer.h>
 
 #include "met_drv.h"
 #include "trace.h"
+#include "interface.h"
 
 #include "mtk_gpu_metmonitor.h"
 #include "core_plf_init.h"
@@ -199,7 +201,7 @@ static void GPULoadingNotify(unsigned long long stamp, int cpu)
 #endif
 
 static char help[] =
-	"  --gpu				monitor gpu status\n";
+	"  --gpu					monitor gpu status\n";
 static int gpu_status_print_help(char *buf, int len)
 {
 	return snprintf(buf, PAGE_SIZE, help);
@@ -759,3 +761,87 @@ struct metdevice met_gpu_pmu = {
 	.print_help		= gpu_pmu_print_help,
 	.print_header		= gpu_pmu_print_header,
 };
+
+/*
+ * GPU stall counters
+ */
+#ifdef MET_GPU_STALL_MONITOR
+static void __iomem	*io_addr_gpu_stall;
+
+static int gpu_stall_create_subfs(struct kobject *parent)
+{
+	io_addr_gpu_stall = ioremap(IO_ADDR_GPU_STALL, IO_SIZE_GPU_STALL);
+	if (!io_addr_gpu_stall) {
+		PR_BOOTMSG("Failed to init GPU stall counters!!\n");
+		return -ENODEV;
+	}
+
+	return 0;
+}
+
+static void gpu_stall_delete_subfs(void)
+{
+	if (io_addr_gpu_stall) {
+		iounmap(io_addr_gpu_stall);
+		io_addr_gpu_stall = NULL;
+	}
+}
+
+static void gpu_stall_start(void)
+{
+	writel(0x00010001, io_addr_gpu_stall+OFFSET_STALL_GPU_M0_CHECK);
+	writel(0x00010001, io_addr_gpu_stall+OFFSET_STALL_GPU_M1_CHECK);
+	writel(0x00010001, io_addr_gpu_stall+OFFSET_STALL_GPU_M0_EMI_CHECK);
+	writel(0x00010001, io_addr_gpu_stall+OFFSET_STALL_GPU_M1_EMI_CHECK);
+}
+
+static void gpu_stall_stop(void)
+{
+	writel(0x00000000, io_addr_gpu_stall+OFFSET_STALL_GPU_M0_CHECK);
+	writel(0x00000000, io_addr_gpu_stall+OFFSET_STALL_GPU_M1_CHECK);
+	writel(0x00000000, io_addr_gpu_stall+OFFSET_STALL_GPU_M0_EMI_CHECK);
+	writel(0x00000000, io_addr_gpu_stall+OFFSET_STALL_GPU_M1_EMI_CHECK);
+}
+
+noinline void GPU_STALL_RAW(void)
+{
+	unsigned int	stall_counters[4];
+	char		*SOB, *EOB;
+
+	stall_counters[0] = (unsigned int)readl(io_addr_gpu_stall+OFFSET_STALL_GPU_M0_CHECK);
+	stall_counters[1] = (unsigned int)readl(io_addr_gpu_stall+OFFSET_STALL_GPU_M1_CHECK);
+	stall_counters[2] = (unsigned int)readl(io_addr_gpu_stall+OFFSET_STALL_GPU_M0_EMI_CHECK);
+	stall_counters[3] = (unsigned int)readl(io_addr_gpu_stall+OFFSET_STALL_GPU_M1_EMI_CHECK);
+
+	MET_TRACE_GETBUF(&SOB, &EOB);
+	EOB = ms_formatH(EOB, ARRAY_SIZE(stall_counters), stall_counters);
+	MET_TRACE_PUTBUF(SOB, EOB);
+}
+
+static void gpu_stall_timed_polling(unsigned long long stamp, int cpu)
+{
+	GPU_STALL_RAW();
+}
+
+static char g_pComGPUStallHeader[] =
+	"met-info [000] 0.0: met_gpu_stall_header: M0_STATUS_1,M1_STATUS_1,M0_STATUS_2,M1_STATUS_2\n";
+static int gpu_stall_print_header(char *buf, int len)
+{
+	return snprintf(buf, PAGE_SIZE, g_pComGPUStallHeader);
+}
+
+struct metdevice met_gpu_stall = {
+	.name			= "gpu-stall",
+	.owner			= THIS_MODULE,
+	.type			= MET_TYPE_BUS,
+	.cpu_related		= 0,
+	.create_subfs		= gpu_stall_create_subfs,
+	.delete_subfs		= gpu_stall_delete_subfs,
+	.start			= gpu_stall_start,
+	.stop			= gpu_stall_stop,
+	.mode			= 0,
+	.polling_interval	= 1,	/* ms */
+	.timed_polling		= gpu_stall_timed_polling,
+	.print_header		= gpu_stall_print_header,
+};
+#endif	/* MET_GPU_STALL_MONITOR */

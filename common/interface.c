@@ -28,6 +28,7 @@
 #include "met_drv.h"
 #include "met_tag.h"
 #include "met_kernel_symbol.h"
+#include "met_power.h"
 #include "met_api_tbl.h"
 #include "version.h"
 
@@ -45,6 +46,10 @@ static int met_suspend_compensation_flag;
  *   1: perf APIs
  */
 unsigned int met_cpu_pmu_method = 1;
+/*
+ * controls whether re-configuring pmu events after leaving cpu off state
+ */
+unsigned int met_cpu_pm_pmu_reconfig = 1;
 
 int met_hrtimer_expire;		/* in ns */
 int met_timer_expire;		/* in jiffies */
@@ -157,6 +162,18 @@ static ssize_t cpu_pmu_method_show(struct device *dev, struct device_attribute *
 static ssize_t cpu_pmu_method_store(struct device *dev, struct device_attribute *attr, const char *buf,
 			  size_t count);
 static DEVICE_ATTR(cpu_pmu_method, 0664, cpu_pmu_method_show, cpu_pmu_method_store);
+
+static ssize_t cpu_pm_pmu_reconfig_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf);
+static ssize_t cpu_pm_pmu_reconfig_store(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf,
+					 size_t count);
+static DEVICE_ATTR(cpu_pm_pmu_reconfig,
+		   0664,
+		   cpu_pm_pmu_reconfig_show,
+		   cpu_pm_pmu_reconfig_store);
 
 #ifdef PR_CPU_NOTIFY
 int met_cpu_notify;
@@ -323,6 +340,26 @@ static ssize_t cpu_pmu_method_store(struct device *dev, struct device_attribute 
 	return count;
 }
 
+static ssize_t cpu_pm_pmu_reconfig_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", met_cpu_pm_pmu_reconfig);
+}
+
+static ssize_t cpu_pm_pmu_reconfig_store(struct device *dev,
+					 struct device_attribute *attr,
+					 const char *buf,
+					 size_t count)
+{
+	unsigned int value;
+
+	if (met_parse_num(buf, &value, count) < 0)
+		return -EINVAL;
+
+	met_cpu_pm_pmu_reconfig = value;
+	return count;
+}
 
 static void _test_trace_ipi_raise(void *info)
 {
@@ -1237,6 +1274,12 @@ int fs_reg(int met_minor)
 		return ret;
 	}
 
+	ret = device_create_file(met_device.this_device, &dev_attr_cpu_pm_pmu_reconfig);
+	if (ret != 0) {
+		pr_debug("can not create device file: cpu_pm_pmu_reconfig\n");
+		return ret;
+	}
+
 #if	defined(MET_BOOT_MSG)
 	ret = device_create_file(met_device.this_device, &dev_attr_bootmsg);
 	if (ret != 0) {
@@ -1297,7 +1340,12 @@ int fs_reg(int met_minor)
 	met_register(&met_cpupmu);
 	met_register(&met_memstat);
 	met_register(&met_switch);
-	/* met_register(&met_trace_event); */
+#ifdef MET_EVENT_POWER_SUPPORT
+	met_register(&met_trace_event);
+	met_ext_api.met_pm_qos_update_request = pm_qos_update_request;
+	met_ext_api.met_pm_qos_update_target = pm_qos_update_target;
+#endif
+
 	met_register(&met_dummy_header);
 
 	met_register(&met_backlight);
@@ -1330,7 +1378,11 @@ void fs_unreg(void)
 #endif
 
 	met_deregister(&met_dummy_header);
-	/* met_deregister(&met_trace_event); */
+#ifdef MET_EVENT_POWER_SUPPORT
+	met_deregister(&met_trace_event);
+	met_ext_api.met_pm_qos_update_request = NULL;
+	met_ext_api.met_pm_qos_update_target = NULL;
+#endif
 	met_deregister(&met_switch);
 	met_deregister(&met_memstat);
 	met_deregister(&met_cpupmu);
@@ -1367,6 +1419,7 @@ void fs_unreg(void)
 
 	device_remove_file(met_device.this_device, &dev_attr_ctrl);
 	device_remove_file(met_device.this_device, &dev_attr_cpu_pmu_method);
+	device_remove_file(met_device.this_device, &dev_attr_cpu_pm_pmu_reconfig);
 
 	device_remove_file(met_device.this_device, &dev_attr_core_topology);
 	device_remove_file(met_device.this_device, &dev_attr_plf);

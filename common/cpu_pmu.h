@@ -42,6 +42,11 @@ struct cpu_pmu_hw {
 	unsigned int (*polling)(struct met_pmu *pmu, int count, unsigned int *pmu_value);
 	struct met_pmu *pmu[MXNR_CPU];
 	int event_count[MXNR_CPU];
+	/*
+	 * used for compensation of pmu counter loss
+	 * between end of polling and start of cpu pm
+	 */
+	unsigned int cpu_pm_unpolled_loss[MXNR_CPU][MXNR_PMU_EVENTS];
 };
 
 struct pmu_desc {

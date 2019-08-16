@@ -69,6 +69,9 @@ unsigned int * (*vcorefs_get_src_req_symbol)(void);
 
 #ifdef MET_EMI
 void *(*mt_cen_emi_base_get_symbol)(void);
+unsigned int (*get_dram_data_rate_symbol)(void);
+unsigned int (*get_ddr_type_symbol)(void);
+unsigned int (*get_cur_ddr_ratio_symbol)(void);
 #endif /* MET_EMI */
 
 #ifdef MET_PTPOD
@@ -127,6 +130,9 @@ static int met_symbol_get(void)
 
 #ifdef MET_EMI
 	_MET_SYMBOL_GET(mt_cen_emi_base_get);
+	_MET_SYMBOL_GET(get_dram_data_rate);
+	_MET_SYMBOL_GET(get_ddr_type);
+	_MET_SYMBOL_GET(get_cur_ddr_ratio);
 #endif
 
 #ifdef MET_PTPOD
@@ -185,6 +191,9 @@ static int met_symbol_put(void)
 
 #ifdef MET_EMI
 	_MET_SYMBOL_PUT(mt_cen_emi_base_get);
+	_MET_SYMBOL_PUT(get_dram_data_rate);
+	_MET_SYMBOL_PUT(get_ddr_type);
+	_MET_SYMBOL_PUT(get_cur_ddr_ratio);
 #endif
 
 #ifdef MET_PTPOD
@@ -206,6 +215,9 @@ int core_plf_init(void)
 	met_register(&met_gpumem);
 	met_register(&met_gpupwr);
 	met_register(&met_gpu_pmu);
+#ifdef MET_GPU_STALL_MONITOR
+	met_register(&met_gpu_stall);
+#endif
 #endif
 
 #ifdef MET_VCOREDVFS
@@ -220,8 +232,22 @@ int core_plf_init(void)
 	met_register(&met_ptpod);
 #endif
 
+#ifdef MET_WALLTIME
+	met_register(&met_wall_time);
+#endif
+
 #ifdef MTK_TINYSYS_SSPM_SUPPORT
 	met_register(&met_sspm_common);
+#endif
+
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(ONDIEMET_SUPPORT)
+#ifdef MET_SSPM_WALLTIME
+	met_register(&met_sspm_walltime);
+#endif
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT && ONDIEMET_SUPPORT */
+
+#ifdef MET_CPUDSU
+	met_register(&met_cpudsu);
 #endif
 
 	return 0;
@@ -238,6 +264,9 @@ void core_plf_exit(void)
 	met_deregister(&met_gpumem);
 	met_deregister(&met_gpupwr);
 	met_deregister(&met_gpu_pmu);
+#ifdef MET_GPU_STALL_MONITOR
+	met_deregister(&met_gpu_stall);
+#endif
 #endif
 
 #ifdef MET_VCOREDVFS
@@ -252,7 +281,23 @@ void core_plf_exit(void)
 	met_deregister(&met_ptpod);
 #endif
 
+#ifdef MET_WALLTIME
+	met_deregister(&met_wall_time);
+#endif
+
 #ifdef MTK_TINYSYS_SSPM_SUPPORT
 	met_deregister(&met_sspm_common);
 #endif
+
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(ONDIEMET_SUPPORT)
+#ifdef MET_SSPM_WALLTIME
+	met_deregister(&met_sspm_walltime);
+#endif
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT && ONDIEMET_SUPPORT */
+
+#ifdef MET_CPUDSU
+	met_deregister(&met_cpudsu);
+#endif
+
+
 }

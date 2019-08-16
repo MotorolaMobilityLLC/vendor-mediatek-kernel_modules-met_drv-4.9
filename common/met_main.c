@@ -64,6 +64,11 @@ void (*met_cpu_frequency_symbol)(unsigned int frequency, unsigned int cpu_id);
 int (*met_reg_switch_symbol)(void);
 void (*met_unreg_switch_symbol)(void);
 
+#ifdef MET_EVENT_POWER_SUPPORT
+int (*met_reg_event_power_symbol)(void);
+void (*met_unreg_event_power_symbol)(void);
+#endif
+
 void (*met_arch_setup_dma_ops_symbol)(struct device *dev);
 u64 (*met_perf_event_read_local_symbol)(struct perf_event *ev);
 struct task_struct *(*met_kthread_create_on_cpu_symbol)(int (*threadfn)(void *data),
@@ -133,21 +138,37 @@ static void met_set_cpu_topology(int core_id, int cluster_core_num)
 
 static int met_create_cpu_topology(void)
 {
-	int i, len;
-	struct device_node *node = NULL;
+	int i, j, len;
+	struct device_node *node = NULL, *core_node = NULL;
 	int start_core_id = 0;
 	int cluster_num = 0, cluster_core_num = 0;
-	char cluster_name[16];
+	char cluster_name[16], core_name[16];
 
 	node = of_find_node_by_name(NULL, "cpu-map");
+	if (!node)
+		node = of_find_node_by_name(NULL, "virtual-cpu-map");
+
 	if (node) {
 		cluster_num = of_get_child_count(node);
+		of_node_put(node);
 
 		for (i = 0; i < cluster_num; i++) {
 			snprintf(cluster_name, sizeof(cluster_name), "cluster%d", i);
 			node = of_find_node_by_name(NULL, cluster_name);
 			if (node) {
-				cluster_core_num = of_get_child_count(node);
+
+				j = 0;
+				cluster_core_num = 0;
+				do {
+					snprintf(core_name, sizeof(core_name), "core%d", j);
+					core_node = of_get_child_by_name(node, core_name);
+					if (core_node) {
+						cluster_core_num++;
+						of_node_put(core_node);
+					}
+					j++;
+				} while (core_node);
+				of_node_put(node);
 
 				/* "|" use to separate different cluster */
 				if (i > 0) {
@@ -212,6 +233,19 @@ static int met_kernel_symbol_get(void)
 		met_smp_call_function_single_symbol = (void *)symbol_get(met_smp_call_function_single);
 	if (met_smp_call_function_single_symbol == NULL)
 		ret = -10;
+
+#ifdef MET_EVENT_POWER_SUPPORT
+	if (met_reg_event_power_symbol == NULL)
+		met_reg_event_power_symbol = (void *)symbol_get(met_reg_event_power);
+	if (met_reg_event_power_symbol == NULL)
+		ret = -11;
+
+	if (met_unreg_event_power_symbol == NULL)
+		met_unreg_event_power_symbol = (void *)symbol_get(met_unreg_event_power);
+	if (met_unreg_event_power_symbol == NULL)
+		ret = -12;
+#endif
+
 	return ret;
 }
 
@@ -283,6 +317,14 @@ static void __exit met_drv_exit(void)
 		symbol_put(met_reg_switch);
 	if (met_unreg_switch_symbol)
 		symbol_put(met_unreg_switch);
+
+#ifdef MET_EVENT_POWER_SUPPORT
+	if (met_reg_event_power_symbol)
+		symbol_put(met_reg_event_power);
+	if (met_unreg_event_power_symbol)
+		symbol_put(met_unreg_event_power);
+#endif
+
 	if (tracing_record_cmdline_symbol)
 		symbol_put(met_tracing_record_cmdline);
 	if (met_get_cpuinfo_symbol)

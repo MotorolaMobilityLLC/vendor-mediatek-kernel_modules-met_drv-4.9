@@ -43,6 +43,12 @@ extern int met_reg_switch(void);
 extern int (*met_reg_switch_symbol)(void);
 extern void met_unreg_switch(void);
 extern void (*met_unreg_switch_symbol)(void);
+#ifdef MET_EVENT_POWER_SUPPORT
+extern int met_reg_event_power(void);
+extern int (*met_reg_event_power_symbol)(void);
+extern void met_unreg_event_power(void);
+extern void (*met_unreg_event_power_symbol)(void);
+#endif
 extern void met_arch_setup_dma_ops(struct device *dev);
 extern u64 met_perf_event_read_local(struct perf_event *ev);
 extern struct task_struct *met_kthread_create_on_cpu(int (*threadfn)(void *data),

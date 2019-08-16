@@ -299,6 +299,9 @@ int met_set_dump_buffer_real(int size)
 	if (size == 0)
 		return 0;
 
+	if (size < 0)
+		return -1;
+
 	size = (size + (PAGE_SIZE - 1)) & (~(PAGE_SIZE - 1));
 	dump_buffer = (void *)__get_free_pages(GFP_KERNEL, get_order(size));
 	if (dump_buffer == NULL) {
@@ -319,24 +322,33 @@ int met_save_dump_buffer_real(const char *pathname)
 	if (dump_data_size == 0)
 		return 0;
 
-	outfp = filp_open(pathname, O_WRONLY | O_TRUNC | O_CREAT, 0664);
-	if (unlikely(outfp == NULL)) {
-		ERRF("can not open saved file for write\n");
-		return -EIO;
-	}
+	if (dump_data_size < 0 || dump_overrun_size < 0)
+		return -1;
 
-	oldfs = get_fs();
-	set_fs(KERNEL_DS);
+	if (dump_buffer == NULL || dump_buffer_size <= 0)
+		return -1;
 
 	if (dump_overrun)
 		size = dump_overrun_size;
 	else
 		size = dump_data_size;
 
+	if (size >= dump_buffer_size)
+		return -1;
+
+	oldfs = get_fs();
+	set_fs(KERNEL_DS);
+
+	outfp = filp_open(pathname, O_WRONLY | O_TRUNC | O_CREAT, 0664);
+	if (unlikely(outfp == NULL)) {
+		ERRF("can not open saved file for write\n");
+		return -EIO;
+	}
+
 	ret = vfs_write(outfp, dump_buffer, size, &(outfp->f_pos));
-	if (ret < 0) {
+	if (ret < 0)
 		ERRF("can not write to dump file\n");
-	} else {
+	else {
 		dump_data_size = 0;
 		dump_overrun = 0;
 		dump_overrun_size = 0;
@@ -344,6 +356,9 @@ int met_save_dump_buffer_real(const char *pathname)
 	}
 
 	set_fs(oldfs);
+
+	if (outfp != NULL)
+		filp_close(outfp, NULL);
 
 	return 0;
 }

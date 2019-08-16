@@ -64,11 +64,80 @@ MET_DEFINE_PROBE(gpu_job_enqueue, TP_PROTO(u32 ctx_id, u32 job_id, const char *t
 }
 #endif
 
+
+#ifdef  MET_EVENT_POWER_SUPPORT
+#include "met_power.h"
+#include "met_kernel_symbol.h"
+
+static int event_power_registered;
+static int event_power_enabled;
+
+const char *
+met_trace_print_symbols_seq(char* pclass_name, unsigned long val,
+			const struct trace_print_flags *symbol_array)
+{
+	int i;
+    size_t new_fsize=0;
+    char _buf[32];
+	const char *ret = pclass_name;
+
+	for (i = 0;  symbol_array[i].name; i++) {
+
+		if (val != symbol_array[i].mask)
+			continue;
+
+		new_fsize = sprintf(pclass_name, symbol_array[i].name, strlen(symbol_array[i].name));
+		break;
+	}
+
+	if (new_fsize == 0) {
+		snprintf(_buf, 32, "0x%lx", val);
+		new_fsize = sprintf(pclass_name, _buf, strlen(_buf));
+	}
+
+	return ret;
+}
+
+#define __print_symbolic(pclass_name, value, symbol_array...)			\
+	({								\
+		static const struct trace_print_flags symbols[] =	\
+			{ symbol_array, { -1, NULL }};			\
+		met_trace_print_symbols_seq(pclass_name, value, symbols);		\
+	})
+
+void pm_qos_update_request(int pm_qos_class, s32 value, char *owner)
+{
+	char class_name[64];
+	MET_TRACE("pm_qos_class=%s value=%d owner=%s\n",
+	  __print_symbolic(class_name, pm_qos_class,
+		{ _PM_QOS_CPU_DMA_LATENCY,	"CPU_DMA_LATENCY" },
+		{ _PM_QOS_NETWORK_LATENCY,	"NETWORK_LATENCY" },
+		{ _PM_QOS_NETWORK_THROUGHPUT,	"NETWORK_THROUGHPUT" }),
+	  value, owner);
+}
+
+void pm_qos_update_target(unsigned int action, int prev_value, int curr_value)
+{
+	char class_name[64];
+
+	MET_TRACE("action=%s prev_value=%d curr_value=%d\n",
+	  __print_symbolic(class_name, action,
+		{ _PM_QOS_ADD_REQ,	"ADD_REQ" },
+		{ _PM_QOS_UPDATE_REQ,	"UPDATE_REQ" },
+		{ _PM_QOS_REMOVE_REQ,	"REMOVE_REQ" }),
+	  prev_value, curr_value);
+}
+#endif
+
 static int reset_driver_stat(void)
 {
 #ifdef	CONFIG_GPU_TRACEPOINTS
 	event_gpu_enabled = 0;
 #endif
+#ifdef MET_EVENT_POWER_SUPPORT
+	event_power_enabled = 0;
+#endif
+
 	met_trace_event.mode = 0;
 	return 0;
 }
@@ -94,6 +163,21 @@ static void met_event_start(void)
 		event_gpu_registered = 1;
 	} while (0);
 #endif
+
+#ifdef  MET_EVENT_POWER_SUPPORT
+	/* register trace event for power */
+	do {
+		if (!event_power_enabled)
+			break;
+		if (met_reg_event_power_symbol)
+			if (met_reg_event_power_symbol()) {
+				pr_debug("can not register callback of met_reg_event_power\n");
+				break;
+			}
+		event_power_registered = 1;
+	} while (0);
+#endif
+
 }
 
 static void met_event_stop(void)
@@ -104,6 +188,15 @@ static void met_event_stop(void)
 		MET_UNREGISTER_TRACE(gpu_job_enqueue);
 		MET_UNREGISTER_TRACE(gpu_sched_switch);
 		event_gpu_registered = 0;
+	}
+#endif
+
+#ifdef  MET_EVENT_POWER_SUPPORT
+	/* unregister trace event for power */
+	if (event_power_registered) {
+		if (met_unreg_event_power_symbol)
+			met_unreg_event_power_symbol();
+		event_power_registered = 0;
 	}
 #endif
 }
@@ -119,13 +212,22 @@ static int met_event_process_argument(const char *arg, int len)
 		ret = 0;
 	}
 #endif
-
+#ifdef  MET_EVENT_POWER_SUPPORT
+	if (strcasecmp(arg, "power") == 0) {
+		event_power_enabled = 1;
+		met_trace_event.mode = 1;
+		ret = 0;
+	}
+#endif
 	return ret;
 }
 
 static const char help[] = "\b"
 #ifdef	CONFIG_GPU_TRACEPOINTS
 	"  --event=gpu                           output gpu trace events\n"
+#endif
+#ifdef  MET_EVENT_POWER_SUPPORT
+	"  --event=power						 output pmqos trace events\n"
 #endif
 	;
 
@@ -138,6 +240,9 @@ static const char header[] =
 	"met-info [000] 0.0: met_ftrace_event:"
 #ifdef	CONFIG_GPU_TRACEPOINTS
 	" gpu:gpu_sched_switch gpu:gpu_job_enqueue"
+#endif
+#ifdef  MET_EVENT_POWER_SUPPORT
+	" power:pm_qos_update_request power:pm_qos_update_target"
 #endif
 	"\n";
 

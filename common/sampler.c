@@ -208,6 +208,7 @@ static void __met_hrtimer_start(void *unused)
 	}
 
 	list_for_each_entry(c, &met_list, list) {
+		*(this_cpu_ptr(c->polling_count)) = 0;
 		if (c->ondiemet_mode == 0) {
 			if ((c->cpu_related) && (c->mode) && (c->start))
 				c->start();
@@ -274,6 +275,7 @@ static void __met_hrtimer_stop(void *unused)
 			if ((c->cpu_related) && (c->mode) && (c->ondiemet_stop))
 				c->ondiemet_stop();
 		}
+		*(this_cpu_ptr(c->polling_count)) = 0;
 	}
 }
 

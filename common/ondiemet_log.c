@@ -218,6 +218,7 @@ static void *ondiemet_trace_seq_start(struct seq_file *seqf, loff_t *offset)
 
 	mutex_lock(&lock_trace_owner_pid);
 	trace_owner_pid = current->pid;
+	current->flags |= PF_NOFREEZE;
 	mutex_unlock(&lock_trace_owner_pid);
 
 	ret = __ondiemet_trace_seq_next(seqf, offset);

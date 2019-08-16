@@ -26,6 +26,7 @@ extern struct miscdevice met_device;
  */
 #include <mtk_gpu_utility.h>
 #include <mtk_gpufreq.h>
+#include "met_gpu_monitor.h"
 
 extern bool mtk_get_gpu_loading(unsigned int *pLoading);
 extern bool mtk_get_gpu_block(unsigned int *pBlock);
@@ -78,6 +79,9 @@ extern struct metdevice met_gpudvfs;
 extern struct metdevice met_gpumem;
 extern struct metdevice met_gpupwr;
 extern struct metdevice met_gpu_pmu;
+#ifdef MET_GPU_STALL_MONITOR
+extern struct metdevice met_gpu_stall;
+#endif
 #endif /* MET_GPU */
 
 
@@ -107,8 +111,16 @@ extern struct metdevice met_vcoredvfs;
 
 #ifdef MET_EMI
 extern void *mt_cen_emi_base_get(void);
+extern unsigned int get_dram_data_rate(void);      /* in Mhz */
+extern int get_ddr_type(void);
+extern void *get_cur_ddr_ratio(void);
 
 extern void *(*mt_cen_emi_base_get_symbol)(void);
+extern unsigned int (*get_dram_data_rate_symbol)(void); /* in Mhz */
+extern unsigned int (*get_ddr_type_symbol)(void);
+extern unsigned int (*get_cur_ddr_ratio_symbol)(void);
+
+
 
 extern struct metdevice met_sspm_emi;
 #endif /* MET_EMI */
@@ -125,9 +137,23 @@ extern unsigned int (*mt_cpufreq_get_cur_volt_symbol)(unsigned int cluster_id);
 extern struct metdevice met_ptpod;
 #endif /* MET_PTPOD */
 
+#ifdef MET_WALLTIME
+extern struct metdevice met_wall_time;
+#endif
 
 #ifdef MTK_TINYSYS_SSPM_SUPPORT
 extern struct metdevice met_sspm_common;
 #endif /* MTK_TINYSYS_SSPM_SUPPORT */
+
+#if defined(CONFIG_MTK_TINYSYS_SSPM_SUPPORT) && defined(ONDIEMET_SUPPORT)
+#ifdef MET_SSPM_WALLTIME
+extern struct metdevice met_sspm_walltime;
+#endif
+#endif /* CONFIG_MTK_TINYSYS_SSPM_SUPPORT */
+
+#ifdef MET_CPUDSU
+extern struct metdevice met_cpudsu;
+#endif
+
 
 #endif /*__CORE_PLF_INIT_H__*/

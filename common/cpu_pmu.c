@@ -11,6 +11,7 @@
  * GNU General Public License for more details.
  */
 #include <linux/perf_event.h>
+#include <linux/cpu_pm.h>
 #include "met_drv.h"
 #include "met_kernel_symbol.h"
 #include "interface.h"
@@ -22,6 +23,46 @@ static int counter_cnt[MXNR_CPU];
 static int nr_arg[MXNR_CPU];
 
 int met_perf_cpupmu_status;
+
+#ifdef CONFIG_CPU_PM
+static int use_cpu_pm_pmu_notifier = 0;
+
+/* helper notifier for maintaining pmu states before cpu state transition */
+static int cpu_pm_pmu_notify(struct notifier_block *b,
+			     unsigned long cmd,
+			     void *p)
+{
+	int ii;
+	int cpu, count;
+	unsigned int pmu_value[MXNR_PMU_EVENTS];
+
+	if (!met_perf_cpupmu_status)
+		return NOTIFY_OK;
+
+	cpu = raw_smp_processor_id();
+
+	switch (cmd) {
+	case CPU_PM_ENTER:
+		count = cpu_pmu->polling(cpu_pmu->pmu[cpu], cpu_pmu->event_count[cpu], pmu_value);
+		for (ii = 0; ii < count; ii ++)
+			cpu_pmu->cpu_pm_unpolled_loss[cpu][ii] += pmu_value[ii];
+
+		cpu_pmu->stop(cpu_pmu->event_count[cpu]);
+		break;
+	case CPU_PM_ENTER_FAILED:
+	case CPU_PM_EXIT:
+		cpu_pmu->start(cpu_pmu->pmu[cpu], cpu_pmu->event_count[cpu]);
+		break;
+	default:
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_OK;
+}
+
+struct notifier_block cpu_pm_pmu_notifier = {
+	.notifier_call = cpu_pm_pmu_notify,
+};
+#endif
 
 static DEFINE_PER_CPU(unsigned long long[MXNR_PMU_EVENTS], perfCurr);
 static DEFINE_PER_CPU(unsigned long long[MXNR_PMU_EVENTS], perfPrev);
@@ -242,8 +283,18 @@ static int perf_thread_set_perf_events(int cpu)
 			if (!pmu[i].mode)
 				continue;	/* Skip disabled counters */
 			ev = perf_event_create(cpu, pmu[i].event, i);
-			if (ev == NULL)
+			if (ev == NULL) {
+				met_cpupmu.mode = 0;
+				met_perf_cpupmu_status = 0;
+
+				MET_TRACE("[MET_PMU] failed to register pmu event %4x\n", pmu[i].event);
+				pr_notice("[MET_PMU] failed to register pmu event %4x\n", pmu[i].event);
 				continue;
+			}
+
+			MET_TRACE("[MET_PMU] registered pmu slot: [%d] evt=%#04x\n", ev->hw.idx, pmu[i].event);
+			pr_debug("[MET_PMU] registered pmu slot: [%d] evt=%#04x\n", ev->hw.idx, pmu[i].event);
+
 			per_cpu(pevent, cpu)[i] = ev;
 			per_cpu(perfPrev, cpu)[i] = 0;
 			per_cpu(perfCurr, cpu)[i] = 0;
@@ -292,8 +343,6 @@ static void perf_thread_down(struct work_struct *work)
 	struct met_pmu		*pmu;
 
 	cpu = dwork->cpu;
-	if (met_cpupmu.mode == 0)
-		return;
 	if (per_cpu(perfSet, cpu) == 0)
 		return;
 
@@ -301,8 +350,6 @@ static void perf_thread_down(struct work_struct *work)
 	event_count = cpu_pmu->event_count[cpu];
 	pmu = cpu_pmu->pmu[cpu];
 	for (i = 0; i < event_count; i++) {
-		if (!pmu[i].mode)
-			continue;
 		ev = per_cpu(pevent, cpu)[i];
 		if (ev != NULL) {
 			perf_event_release(cpu, ev);
@@ -348,7 +395,22 @@ void met_perf_cpupmu_polling(unsigned long long stamp, int cpu)
 		perf_cpupmu_polling(stamp, cpu);
 	} else {
 		count = cpu_pmu->polling(cpu_pmu->pmu[cpu], cpu_pmu->event_count[cpu], pmu_value);
+
+#ifdef CONFIG_CPU_PM
+		if (met_cpu_pm_pmu_reconfig) {
+			int ii;
+			for (ii = 0; ii < count; ii ++)
+				pmu_value[ii] += cpu_pmu->cpu_pm_unpolled_loss[cpu][ii];
+		}
+#endif
+
 		mp_cpu(count, pmu_value);
+
+#ifdef CONFIG_CPU_PM
+		if (met_cpu_pm_pmu_reconfig) {
+			memset(cpu_pmu->cpu_pm_unpolled_loss[cpu], 0, sizeof (cpu_pmu->cpu_pm_unpolled_loss[0]));
+		}
+#endif
 	}
 }
 
@@ -374,6 +436,30 @@ static void cpupmu_unique_start(void)
 	if (ret == 0)
 		PR_BOOTMSG("Failed to init CPU PMU debug!!\n");
 #endif
+
+#ifdef CONFIG_CPU_PM
+	use_cpu_pm_pmu_notifier = 0;
+	if (met_cpu_pm_pmu_reconfig) {
+		if (met_cpu_pmu_method) {
+			met_cpu_pm_pmu_reconfig = 0;
+			MET_TRACE("[MET_PMU] met_cpu_pmu_method=%d, met_cpu_pm_pmu_reconfig forced disabled\n", met_cpu_pmu_method);
+			pr_debug("[MET_PMU] met_cpu_pmu_method=%d, met_cpu_pm_pmu_reconfig forced disabled\n", met_cpu_pmu_method);
+		} else {
+			memset(cpu_pmu->cpu_pm_unpolled_loss, 0, sizeof (cpu_pmu->cpu_pm_unpolled_loss));
+			cpu_pm_register_notifier(&cpu_pm_pmu_notifier);
+			use_cpu_pm_pmu_notifier = 1;
+		}
+	}
+#else
+	if (met_cpu_pm_pmu_reconfig) {
+		met_cpu_pm_pmu_reconfig = 0;
+		MET_TRACE("[MET_PMU] CONFIG_CPU_PM=%d, met_cpu_pm_pmu_reconfig forced disabled\n", CONFIG_CPU_PM);
+		pr_debug("[MET_PMU] CONFIG_CPU_PM=%d, met_cpu_pm_pmu_reconfig forced disabled\n", CONFIG_CPU_PM);
+	}
+#endif
+	MET_TRACE("[MET_PMU] met_cpu_pm_pmu_reconfig=%u\n", met_cpu_pm_pmu_reconfig);
+	pr_debug("[MET_PMU] met_cpu_pm_pmu_reconfig=%u\n", met_cpu_pm_pmu_reconfig);
+
 	return;
 }
 
@@ -392,6 +478,12 @@ static void cpupmu_unique_stop(void)
 {
 #ifdef CPUPMU_V8_2
 	cpu_pmu_debug_uninit();
+#endif
+
+#ifdef CONFIG_CPU_PM
+	if (use_cpu_pm_pmu_notifier) {
+		cpu_pm_unregister_notifier(&cpu_pm_pmu_notifier);
+	}
 #endif
 	return;
 }
@@ -519,7 +611,6 @@ static int cpupmu_process_argument(const char *arg, int len)
 	int		nr_counters;
 	struct met_pmu	*pmu;
 	int		arg_nr;
-	int		counters;
 	int		event_no;
 
 	/*
@@ -564,7 +655,6 @@ static int cpupmu_process_argument(const char *arg, int len)
 
 	/* for each cpu in cpu_list, add all the events in event_list */
 	for_each_possible_cpu(cpu) {
-		nr_counters = cpu_pmu->event_count[cpu];
 		pmu = cpu_pmu->pmu[cpu];
 		arg_nr = nr_arg[cpu];
 
@@ -572,15 +662,13 @@ static int cpupmu_process_argument(const char *arg, int len)
 			continue;
 
 		if (met_cpu_pmu_method) {
-			/*
-			 * setup nr_counters for linux native perf mode.
-			 * because the selected events are stored in pmu,
-			 * so nr_counters can't large then event count in pmu.
-			 */
-			counters = perf_num_counters();
-			if (counters < nr_counters)
-				nr_counters = counters;
+			nr_counters = perf_num_counters();
+		} else {
+			nr_counters = cpu_pmu->event_count[cpu];
 		}
+
+		pr_debug("[MET_PMU] pmu slot count=%d\n", nr_counters);
+
 		if (nr_counters == 0)
 			goto arg_out;
 
@@ -599,24 +687,35 @@ static int cpupmu_process_argument(const char *arg, int len)
 			if (met_cpu_pmu_method) {
 				struct perf_event *ev;
 				ev = perf_event_create(cpu, event_no, arg_nr);
-				if (ev == NULL)
+				if (ev == NULL) {
+					pr_notice("[MET_PMU] failed pmu alloction test: event_no=%#04x\n", event_no);
 					goto arg_out;
+				}
 				perf_event_release(cpu, ev);
 			}
 
-			if (event_no == 0xff && met_cpu_pmu_method == 0) {
-				if (pmu[nr_counters-1].mode == MODE_POLLING)
-					goto arg_out;
-				pmu[nr_counters-1].mode = MODE_POLLING;
-				pmu[nr_counters-1].event = 0xff;
-				pmu[nr_counters-1].freq = 0;
-			} else {
-				if (arg_nr >= (nr_counters - 1))
+			if (met_cpu_pmu_method) {
+				if (arg_nr >= nr_counters)
 					goto arg_out;
 				pmu[arg_nr].mode = MODE_POLLING;
 				pmu[arg_nr].event = event_no;
 				pmu[arg_nr].freq = 0;
 				arg_nr++;
+			} else {
+				if (event_no == 0xff) {
+					if (pmu[nr_counters-1].mode == MODE_POLLING)
+						goto arg_out;
+					pmu[nr_counters-1].mode = MODE_POLLING;
+					pmu[nr_counters-1].event = 0xff;
+					pmu[nr_counters-1].freq = 0;
+				} else {
+					if (arg_nr >= (nr_counters - 1))
+						goto arg_out;
+					pmu[arg_nr].mode = MODE_POLLING;
+					pmu[arg_nr].event = event_no;
+					pmu[arg_nr].freq = 0;
+					arg_nr++;
+				}
 			}
 			counter_cnt[cpu]++;
 		}
