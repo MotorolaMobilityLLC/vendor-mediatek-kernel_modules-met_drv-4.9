@@ -29,8 +29,6 @@ struct met_api_tbl {
 	int (*met_show_clk_tree)(const char *name, unsigned int addr, unsigned int status);
 	int (*met_reg_clk_tree)(void *fp);
 	void (*met_sched_switch)(struct task_struct *prev, struct task_struct *next);
-	void (*met_pm_qos_update_request)(int pm_qos_class, s32 value, char *owner);
-	void (*met_pm_qos_update_target)(unsigned int action, int prev_value, int curr_value);
 	int (*enable_met_backlight_tag)(void);
 	int (*output_met_backlight_tag)(int level);
 };

@@ -1342,8 +1342,6 @@ int fs_reg(int met_minor)
 	met_register(&met_switch);
 #ifdef MET_EVENT_POWER_SUPPORT
 	met_register(&met_trace_event);
-	met_ext_api.met_pm_qos_update_request = pm_qos_update_request;
-	met_ext_api.met_pm_qos_update_target = pm_qos_update_target;
 #endif
 
 	met_register(&met_dummy_header);
