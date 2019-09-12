@@ -26,6 +26,11 @@ extern int met_mode;
 extern int core_plf_init(void);
 extern void core_plf_exit(void);
 
+#ifdef MET_CHIP_USE
+extern int chip_plf_init(void);
+extern void chip_plf_exit(void);
+#endif
+
 #define MET_MODE_TRACE_CMD_OFFSET	(1)
 #define MET_MODE_TRACE_CMD			(1<<MET_MODE_TRACE_CMD_OFFSET)
 

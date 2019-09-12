@@ -306,6 +306,11 @@ static int __init met_drv_init(void)
 #ifdef MET_PLF_USE
 	core_plf_init();
 #endif
+
+#ifdef MET_CHIP_USE
+	chip_plf_init();
+#endif
+
 	return 0;
 }
 
@@ -333,8 +338,12 @@ static void __exit met_drv_exit(void)
 #ifdef MET_PLF_USE
 	core_plf_exit();
 #endif
-	fs_unreg();
 
+#ifdef MET_CHIP_USE
+	chip_plf_exit();
+#endif
+
+	fs_unreg();
 }
 module_init(met_drv_init);
 module_exit(met_drv_exit);

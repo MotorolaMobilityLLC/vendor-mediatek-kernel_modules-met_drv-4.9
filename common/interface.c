@@ -652,6 +652,7 @@ static ssize_t suspend_compensation_flag_show(struct device *dev, struct device_
 	return ret;
 }
 
+#ifndef EMI_EBL_SUPPORT
 static ssize_t hash_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	return 0;
@@ -664,6 +665,7 @@ static ssize_t hash_store(struct device *dev, struct device_attribute *attr, con
 }
 
 static DEVICE_ATTR(hash, 0664, hash_show, hash_store);
+#endif
 
 static ssize_t mode_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
@@ -1306,11 +1308,13 @@ int fs_reg(int met_minor)
 		return ret;
 	}
 
+#ifndef EMI_EBL_SUPPORT
 	ret = device_create_file(met_device.this_device, &dev_attr_hash);
 	if (ret != 0) {
 		pr_debug("can not create device file: hash\n");
 		return ret;
 	}
+#endif
 
 	ret = device_create_file(met_device.this_device, &dev_attr_ipi_test);
 	if (ret != 0) {
@@ -1421,7 +1425,9 @@ void fs_unreg(void)
 
 	device_remove_file(met_device.this_device, &dev_attr_core_topology);
 	device_remove_file(met_device.this_device, &dev_attr_plf);
+#ifndef EMI_EBL_SUPPORT
 	device_remove_file(met_device.this_device, &dev_attr_hash);
+#endif
 	device_remove_file(met_device.this_device, &dev_attr_ipi_test);
 
 	ondiemet_log_manager_uninit(met_device.this_device);
