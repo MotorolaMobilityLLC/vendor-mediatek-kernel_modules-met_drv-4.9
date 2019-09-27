@@ -49,7 +49,7 @@
 		const char *buf, \
 		size_t n) \
 	{ \
-		int	val; \
+		int	val = 0; \
 		if (kstrtoint(buf, 0, &val) != 0) { \
 			return -EINVAL; \
 		} \
@@ -132,7 +132,7 @@
 		const char *buf, \
 		size_t n) \
 	{ \
-		unsigned int	val; \
+		unsigned int	val = 0; \
 		if (kstrtouint(buf, 0, &val) != 0) { \
 			return -EINVAL; \
 		} \
